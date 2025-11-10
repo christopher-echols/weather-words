@@ -10,10 +10,16 @@
     :root{ --accent:#20a2ee; --accent2:#1ec278; }
     *{box-sizing:border-box}
     html,body{height:100%}
-    body{margin:0; padding:10%; display:flex; align-items:center; justify-content:center; text-align:center;
-      font-family:'Questrial',system-ui,-apple-system,Segoe UI,Roboto,sans-serif; transition:background-color 420ms ease,color 420ms ease;}
-    body.theme-neutral{background:#e9efef;color:#26364d;} body.theme-cool{background:#dfeaf0;color:#26364d;}
-    body.theme-warm{background:#f3eadf;color:#3b2f2a;} body.theme-rain{background:#e6edf1;color:#22303d;}
+    body{
+      margin:0; padding:10%;
+      display:flex; align-items:center; justify-content:center; text-align:center;
+      font-family:'Questrial',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      transition:background-color 420ms ease,color 420ms ease;
+    }
+    body.theme-neutral{background:#e9efef;color:#26364d;}
+    body.theme-cool{background:#dfeaf0;color:#26364d;}
+    body.theme-warm{background:#f3eadf;color:#3b2f2a;}
+    body.theme-rain{background:#e6edf1;color:#22303d;}
     body.theme-snow{background:#f5f7fa;color:#2c3a4a;}
 
     .controls{position:fixed;top:12px;right:12px;display:flex;gap:.5rem;align-items:center;opacity:.85;z-index:10}
@@ -30,11 +36,15 @@
     .bike-wrap{display:inline-flex; align-items:center; gap:.35rem}
     .wind-icon{font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24; font-size:clamp(1.6rem,4.2vw,2.2rem); line-height:1; opacity:.35}
     .wind-icon.flip {transform: rotate(180deg);}
+
     h1{font-family:'Quattrocento',serif;font-weight:700;font-size:clamp(2.5rem,6vw,4rem);line-height:1.1;margin:.1rem 0 1rem;letter-spacing:-0.01em;transition:color 420ms ease;}
     #weather{font-family:'Questrial',sans-serif;font-weight:400;font-size:clamp(1.5rem,4vw,2.25rem);line-height:1.35;max-width:40ch;margin:0 auto 1.25rem;letter-spacing:0.01em;transition:color 420ms ease;}
     #advice{font-family:'Quattrocento',serif;font-weight:700;font-size:clamp(1.1rem,2.5vw,1.5rem);line-height:1.35;margin-top:.75rem;letter-spacing:-0.005em;transition:color 420ms ease;}
-    body.theme-neutral #advice{color:#1e7f52}body.theme-cool #advice{color:#1e7f52}body.theme-warm #advice{color:#7d5a3a}
-    body.theme-rain #advice{color:#1e6a7f}body.theme-snow #advice{color:#315a7d}
+    body.theme-neutral #advice{color:#1e7f52}
+    body.theme-cool #advice{color:#1e7f52}
+    body.theme-warm #advice{color:#7d5a3a}
+    body.theme-rain #advice{color:#1e6a7f}
+    body.theme-snow #advice{color:#315a7d}
 
     #locationInputContainer{display:none;position:fixed;top:52px;right:12px;background:#ffffffd9;color:#111;padding:.75rem;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.12);width:min(90vw,360px);text-align:left;z-index:11}
     #locationInputContainer input{width:100%;padding:.5rem .6rem;font-size:1rem;margin:.25rem 0 .5rem;}
@@ -48,10 +58,17 @@
 <body class="theme-neutral">
   <div class="controls">
     <select id="headingSelect" class="mini" title="Outbound heading">
-      <option value="none">Heading</option><option value="0">N</option><option value="45">NE</option><option value="90">E</option><option value="135">SE</option><option value="180">S</option><option value="225">SW</option><option value="270">W</option><option value="315">NW</option>
+      <option value="none">Heading</option>
+      <option value="0">N</option><option value="45">NE</option><option value="90">E</option><option value="135">SE</option>
+      <option value="180">S</option><option value="225">SW</option><option value="270">W</option><option value="315">NW</option>
     </select>
-    <select id="routeType" class="mini" title="Route"><option value="outback" selected>Out & Back</option><option value="loop">Loop</option></select>
-    <button class="icon-btn" onclick="toggleLocationInput()" title="Set location"><span class="material-symbols-rounded">pin_drop</span></button>
+    <select id="routeType" class="mini" title="Route">
+      <option value="outback" selected>Out & Back</option>
+      <option value="loop">Loop</option>
+    </select>
+    <button class="icon-btn" onclick="toggleLocationInput()" title="Set location">
+      <span class="material-symbols-rounded">pin_drop</span>
+    </button>
   </div>
 
   <div class="container">
@@ -98,7 +115,7 @@
   const $ = s => document.querySelector(s);
   let lastData = null;
 
-  /* --- Variation helpers (hardened) --- */
+  /* --- Variation + language helpers (hardened) --- */
   function seedFrom(...args){
     const s = args.join('|'); let h = 2166136261>>>0;
     for (let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h += (h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24); }
@@ -109,29 +126,70 @@
     const n = Math.abs(Number(seed)) % list.length;
     return list[n];
   }
-  function phraserCurrent(tempF, feelF, desc, windText, seed){
-    const openers = ["Right now it’s","Currently it’s","At the moment it’s","Now it’s"];
-    const joins   = ["with","and","under","as"];
-    const feels   = Number.isFinite(feelF)
-      ? [`(feels ${feelF}°)`,`feels like ${feelF}°`,`wind chill ${feelF}°`,`apparent ${feelF}°`]
-      : [];
-    const opener  = pick(openers, seed) || "Right now it’s";
-    const join    = pick(joins,   seed>>2) || "with";
-    const feelStr = pick(feels,   seed>>3);
-    const feelSeg = feelStr ? ` ${feelStr}` : '';
-    return `${opener} ${tempF}°${feelSeg} and ${desc}, ${join} ${windText}.`;
+  function wordTempBand(t){
+    if (!Number.isFinite(t)) return null;
+    if (t >= 92) return "blazing hot";
+    if (t >= 85) return "hot";
+    if (t >= 78) return "warm";
+    if (t >= 68) return "mild";
+    if (t >= 58) return "cool";
+    if (t >= 48) return "chilly";
+    if (t >= 32) return "cold";
+    return "freezing";
   }
-  function phraserNext(nextSentence, seed){
-    if (!nextSentence) return '';
-    const bridges = ["Looking ahead:","Over the next few hours:","Soon:","Next up:"];
-    const bridge  = pick(bridges, seed>>5) || "Next:";
-    return `${bridge} ${nextSentence}`;
+  function cap(s){ return (s||"").charAt(0).toUpperCase() + (s||"").slice(1); }
+  function phraseSky(metaDesc){
+    const d = (metaDesc||"").toLowerCase();
+    if (!d) return null;
+    if (d === "clear sky") return "clear";
+    if (d === "mostly clear") return "mostly clear";
+    return d;
   }
 
   /* --- Location UI: ZIP (US) + City/State --- */
-  async function startGeocode(){ const q=$('#locationInput').value.trim(); if(!q) return; const resultsEl=$('#geoResults'); resultsEl.innerHTML='Searching…'; try{ if(/^\d{5}$/.test(q)){ const z=await fetch(`https://api.zippopotam.us/us/${q}`).then(r=>r.ok?r.json():Promise.reject()); const place=z.places&&z.places[0]; if(place){ const lat=parseFloat(place.latitude), lon=parseFloat(place.longitude); resultsEl.innerHTML=`<div class="geo-item" data-lat="${lat}" data-lon="${lon}">${place["place name"]}, ${place["state abbreviation"]} ${q}</div>`; bindGeoPicks(); return; } } const url=`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=en&format=json`; const g=await fetch(url).then(r=>r.json()); if(g&&g.results&&g.results.length){ resultsEl.innerHTML=g.results.map(r=>{ const label=[r.name,r.admin1,r.country_code].filter(Boolean).join(', '); return `<div class=\"geo-item\" data-lat=\"${r.latitude}\" data-lon=\"${r.longitude}\">${label}</div>`; }).join(''); bindGeoPicks(); } else { resultsEl.textContent='No matches. Try a ZIP or add the state abbreviation.'; } } catch { resultsEl.textContent='Error finding location.'; } }
-  function bindGeoPicks(){ document.querySelectorAll('.geo-item').forEach(el=>{ el.addEventListener('click',()=>{ const lat=parseFloat(el.getAttribute('data-lat')); const lon=parseFloat(el.getAttribute('data-lon')); saveCoords(lat,lon); fetchWeather(lat,lon); toggleLocationInput(); }); }); }
-  function toggleLocationInput(){ const box=$('#locationInputContainer'); box.style.display=(box.style.display==='block')?'none':'block'; }
+  async function startGeocode(){
+    const q=$('#locationInput').value.trim(); if(!q) return;
+    const resultsEl=$('#geoResults'); resultsEl.innerHTML='Searching…';
+    try{
+      if(/^\d{5}$/.test(q)){
+        const z=await fetch(`https://api.zippopotam.us/us/${q}`).then(r=>r.ok?r.json():Promise.reject());
+        const place=z.places&&z.places[0];
+        if(place){
+          const lat=parseFloat(place.latitude), lon=parseFloat(place.longitude);
+          resultsEl.innerHTML=`<div class="geo-item" data-lat="${lat}" data-lon="${lon}">${place["place name"]}, ${place["state abbreviation"]} ${q}</div>`;
+          bindGeoPicks(); return;
+        }
+      }
+      const url=`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=en&format=json`;
+      const g=await fetch(url).then(r=>r.json());
+      if(g&&g.results&&g.results.length){
+        resultsEl.innerHTML=g.results.map(r=>{
+          const label=[r.name,r.admin1,r.country_code].filter(Boolean).join(', ');
+          return `<div class="geo-item" data-lat="${r.latitude}" data-lon="${r.longitude}">${label}</div>`;
+        }).join('');
+        bindGeoPicks();
+      } else {
+        resultsEl.textContent='No matches. Try a ZIP or add the state abbreviation.';
+      }
+    } catch {
+      resultsEl.textContent='Error finding location.';
+    }
+  }
+  function bindGeoPicks(){
+    document.querySelectorAll('.geo-item').forEach(el=>{
+      el.addEventListener('click',()=>{
+        const lat=parseFloat(el.getAttribute('data-lat'));
+        const lon=parseFloat(el.getAttribute('data-lon'));
+        saveCoords(lat,lon);
+        fetchWeather(lat,lon);
+        toggleLocationInput();
+      });
+    });
+  }
+  function toggleLocationInput(){
+    const box=$('#locationInputContainer');
+    box.style.display=(box.style.display==='block')?'none':'block';
+  }
 
   /* --- Wind + units --- */
   function degDiff(a,b){ return Math.abs(((a - b + 540) % 360) - 180); }
@@ -141,18 +199,74 @@
     const norm = ((b % 360) + 360) % 360;
     return dirs[Math.round(norm/45) % 8];
   }
-  function relationship(wFromDeg, rHeading){ if (rHeading == null || isNaN(rHeading)) return {kind:'wind', label:'wind'}; const diff = degDiff(wFromDeg, rHeading); if (diff <= 45) return {kind:'head', label:'headwind'}; if (diff >= 135) return {kind:'tail', label:'tailwind'}; return {kind:'cross', label:'crosswind'}; }
+  function relationship(wFromDeg, rHeading){
+    if (rHeading == null || isNaN(rHeading)) return {kind:'wind', label:'wind'};
+    const diff = degDiff(wFromDeg, rHeading);
+    if (diff <= 45) return {kind:'head', label:'headwind'};
+    if (diff >= 135) return {kind:'tail', label:'tailwind'};
+    return {kind:'cross', label:'crosswind'};
+  }
   function mph(kmh){ return Math.round(kmh / 1.609); }
   function fFromC(c){ return Math.round(c * 9/5 + 32); }
 
   /* --- Copy/theming helpers --- */
-  function periodLabel(h){ if (h>=5&&h<=11) return 'this morning'; if (h>=12&&h<=16) return 'this afternoon'; if (h>=17&&h<=21) return 'this evening'; return 'overnight'; }
-  function categoryFor(code){ if ([51,53,55].includes(code)) return 'drizzle'; if ([61,63,65].includes(code)) return 'rain'; if ([71,73,75].includes(code)) return 'snow'; if ([95].includes(code)) return 'storm'; if ([45,48].includes(code)) return 'fog'; if ([0,1,2,3].includes(code)) return 'dry'; return 'other'; }
-  function summarizeNextSix(hourly, startIdx){ const times=hourly.time, codes=hourly.weathercode, temps=hourly.temperature_2m, gusts=hourly.windgusts_10m; if (!times || startIdx < 0) return ''; const endIdx = Math.min(startIdx+6, times.length); const sliceCodes = codes.slice(startIdx, endIdx); const sliceTemps = temps.slice(startIdx, endIdx); const sliceGusts = (gusts||[]).slice(startIdx, endIdx); const firstHour = new Date(times[startIdx]).getHours(); const firstDrizzle = sliceCodes.findIndex(c=>categoryFor(c)==='drizzle'); const firstRain = sliceCodes.findIndex(c=>categoryFor(c)==='rain'); const firstSnow = sliceCodes.findIndex(c=>categoryFor(c)==='snow'); const firstStorm = sliceCodes.findIndex(c=>categoryFor(c)==='storm'); const precip = [{t:'thunderstorms', i:firstStorm}, {t:'snow', i:firstSnow}, {t:'rain', i:firstRain}, {t:'light rain', i:firstDrizzle}].filter(x=>x.i!==-1).sort((a,b)=>a.i-b.i); const firstF = fFromC(sliceTemps[0]); const lastF  = fFromC(sliceTemps[sliceTemps.length-1]); const delta  = lastF - firstF; function whenPhrase(o){ if (o<=1) return 'soon'; const hr=(firstHour+o)%24; return 'by '+periodLabel(hr); } if (precip.length){ const {t,i} = precip[0]; const verb = (i<=1)?'is likely':'is expected'; return `${t.charAt(0).toUpperCase()+t.slice(1)} ${verb} ${whenPhrase(i)}.`; } if (Math.abs(delta) >= 4) return (delta>0) ? 'Temperatures will climb a bit over the next few hours.' : 'Temperatures will ease down over the next few hours.'; if (sliceGusts.length >= 2){ const g0 = Math.round(sliceGusts[0]||0), g1 = Math.round(sliceGusts[sliceGusts.length-1]||0); if (g1-g0 >= 5) return 'Gusts will strengthen a little in the next few hours.'; if (g0-g1 >= 5) return 'Gusts will ease a little over the next few hours.'; } return 'It should stay fairly steady and dry for a while.'; }
-  function routeHint(kind, routeType){ if (routeType!=='outback') return ''; if (kind==='head') return ' Tailwind on the way back.'; if (kind==='tail') return ' Headwind on the return.'; if (kind==='cross') return ' Crosswind both ways.'; return ''; }
-  function adviceSentence(nowF, feelF, windKind, windMph, nextPrecipLikely){ const parts=[]; if (nextPrecipLikely) parts.push('Pack a light shell'); if (feelF<=50 || (nowF<58 && windMph>=10)) parts.push('An extra light layer will keep you warm enough'); if (nowF>=85 || feelF>=88) parts.push('Bring extra water and a pinch of electrolytes'); if (windKind==='cross' && windMph>=15) parts.push('Watch for crosswind gusts on open sections'); return parts.length ? parts.join('. ') + '.' : 'Wear whatever’s comfortable — standard kit is perfect today.'; }
-  function chooseTheme(tempF, code){ const cat = categoryFor(code); if (cat==='snow') return 'theme-snow'; if (['rain','drizzle','storm'].includes(cat)) return 'theme-rain'; if (tempF >= 80) return 'theme-warm'; if (tempF <= 50) return 'theme-cool'; return 'theme-neutral'; }
-  function applyTheme(theme){ ['theme-neutral','theme-cool','theme-warm','theme-rain','theme-snow'].forEach(c=>document.body.classList.remove(c)); document.body.classList.add(theme); }
+  function periodLabel(h){
+    if (h>=5&&h<=11) return 'this morning';
+    if (h>=12&&h<=16) return 'this afternoon';
+    if (h>=17&&h<=21) return 'this evening';
+    return 'overnight';
+  }
+  function categoryFor(code){
+    if ([51,53,55].includes(code)) return 'drizzle';
+    if ([61,63,65,80,81,82].includes(code)) return 'rain';
+    if ([71,73,75,77,85,86].includes(code)) return 'snow';
+    if ([95,96,99].includes(code)) return 'storm';
+    if ([45,48].includes(code)) return 'fog';
+    if ([0,1,2,3].includes(code)) return 'dry';
+    return 'other';
+  }
+  function summarizeNextSix(hourly, startIdx){
+    const times=hourly.time, codes=hourly.weathercode, temps=hourly.temperature_2m, gusts=hourly.windgusts_10m;
+    if (!times || startIdx < 0) return '';
+    const endIdx = Math.min(startIdx+6, times.length);
+    const sliceCodes = codes.slice(startIdx, endIdx);
+    const sliceTemps = temps.slice(startIdx, endIdx);
+    const sliceGusts = (gusts||[]).slice(startIdx, endIdx);
+    const firstHour = new Date(times[startIdx]).getHours();
+
+    const firstDrizzle = sliceCodes.findIndex(c=>categoryFor(c)==='drizzle');
+    const firstRain    = sliceCodes.findIndex(c=>categoryFor(c)==='rain');
+    const firstSnow    = sliceCodes.findIndex(c=>categoryFor(c)==='snow');
+    const firstStorm   = sliceCodes.findIndex(c=>categoryFor(c)==='storm');
+    const precip = [{t:'thunderstorms', i:firstStorm}, {t:'snow', i:firstSnow}, {t:'rain', i:firstRain}, {t:'light rain', i:firstDrizzle}]
+      .filter(x=>x.i!==-1).sort((a,b)=>a.i-b.i);
+
+    const firstF = fFromC(sliceTemps[0]);
+    const lastF  = fFromC(sliceTemps[sliceTemps.length-1]);
+    const delta  = lastF - firstF;
+
+    function whenPhrase(o){ if (o<=1) return 'soon'; const hr=(firstHour+o)%24; return 'by '+periodLabel(hr); }
+
+    if (precip.length){
+      const {t,i} = precip[0];
+      const verb = (i<=1)?'is likely':'is expected';
+      return `${t.charAt(0).toUpperCase()+t.slice(1)} ${verb} ${whenPhrase(i)}.`;
+    }
+    if (Math.abs(delta) >= 4) return (delta>0) ? 'Temperatures will climb a bit over the next few hours.' : 'Temperatures will ease down over the next few hours.';
+    if (sliceGusts.length >= 2){
+      const g0 = Math.round(sliceGusts[0]||0), g1 = Math.round(sliceGusts[sliceGusts.length-1]||0);
+      if (g1-g0 >= 5) return 'Gusts will strengthen a little in the next few hours.';
+      if (g0-g1 >= 5) return 'Gusts will ease a little over the next few hours.';
+    }
+    return 'It should stay fairly steady and dry for a while.';
+  }
+  function routeHint(kind, routeType){
+    if (routeType!=='outback') return '';
+    if (kind==='head') return ' Tailwind on the way back.';
+    if (kind==='tail') return ' Headwind on the return.';
+    if (kind==='cross') return ' Crosswind both ways.';
+    return '';
+  }
 
   /* --- meta fallback to avoid undefined desc/icon --- */
   function metaFor(code){
@@ -164,11 +278,75 @@
     return { desc: descBy[cat], icon: iconBy[cat] };
   }
 
+  /* --- Advice v2 (cyclist-specific, single sentence) --- */
+  function adviceSentence(nowF, feelF, windKind, windMph, nextPrecipLikely){
+    const t = Number.isFinite(feelF) ? feelF : nowF;
+    const rec = [];
+
+    // Temp layers
+    if (t <= 32){
+      rec.push("thermal base layer and a windproof shell");
+      rec.push("warm gloves and a cap");
+    } else if (t <= 45){
+      rec.push("light base layer plus a wind shell");
+      rec.push("full-finger gloves");
+    } else if (t <= 55){
+      rec.push("a light layer or gilet");
+      rec.push("thin full-finger gloves");
+    } else if (t <= 68){
+      rec.push("a single breathable layer");
+    } else if (t >= 85){
+      rec.push("ultra-light jersey");
+      rec.push("extra water and some electrolytes");
+    } else {
+      rec.push("whatever’s comfortable");
+    }
+
+    // Wind adjustments
+    if (Number.isFinite(windMph) && windMph >= 15){
+      if (windKind === "head") rec.push("zip your collar for the outbound");
+      if (windKind === "tail") rec.push("save some for a breezier return");
+      if (windKind === "cross") rec.push("watch crosswind gusts on open sections");
+    }
+
+    // Precip
+    if (nextPrecipLikely){
+      rec.push("pack a light rain shell and run lights");
+    }
+
+    const main = rec.shift();
+    if (!main) return "Standard kit will do nicely today.";
+    const rest = rec.length ? ", " + rec.join(", ") : "";
+    return cap(main + rest) + ".";
+  }
+
   /* --- Preferences: save & load --- */
   function saveCoords(lat,lon){ try{ localStorage.setItem('ww_last_coords', JSON.stringify({lat,lon})); }catch(_){} }
   function loadCoords(){ try{ const v=localStorage.getItem('ww_last_coords'); return v?JSON.parse(v):null; }catch(_){ return null; } }
   function savePrefs(){ try{ localStorage.setItem('ww_heading', $('#headingSelect').value); localStorage.setItem('ww_route', $('#routeType').value); }catch(_){} }
   function loadPrefs(){ try{ const h=localStorage.getItem('ww_heading'); const r=localStorage.getItem('ww_route'); if(h) $('#headingSelect').value=h; if(r) $('#routeType').value=r; }catch(_){} }
+
+  /* --- Forecast phrasing (natural) --- */
+  function phraserCurrent(tempF, feelF, desc, windText, _seed){
+    const tempWord = wordTempBand(tempF);
+    const sky = phraseSky(desc);
+    const feelsBit = (Number.isFinite(feelF) && Math.abs(feelF - tempF) >= 3) ? ` (feels ${feelF}°)` : "";
+    const a = tempWord ? `It’s ${tempWord}` : `It’s ${tempF}°`;
+    const b = sky ? `and ${sky}` : "";
+    const c = windText ? `, with ${windText}` : "";
+    return `${a}${feelsBit} ${b}${c}.`.replace(/\s+/g," ").trim();
+  }
+  function phraserNext(nextSentence, _seed){
+    if (!nextSentence) return "";
+    const m = nextSentence.match(/^(.*?)(?: is| are) (likely|expected) (.*)$/i);
+    if (m){
+      const subject = m[1].toLowerCase();
+      const verb = m[2].toLowerCase()==="likely" ? "likely" : "expected";
+      const tail = m[3];
+      return ` Expect ${subject} ${verb} ${tail}`;
+    }
+    return ` ${nextSentence}`;
+  }
 
   /* --- Render + Fetch --- */
   function render(data){
@@ -192,11 +370,10 @@
     const headingVal = parseInt($('#headingSelect').value,10);
     const rel = relationship(windFrom, isNaN(headingVal) ? null : headingVal);
 
-    // Build icon stack with wind adornments using "air" icons
+    // Wind adornments using "air" icons (tail left, head right flipped toward rider)
     const windLeft  = (rel.kind === 'tail' || rel.kind === 'cross')
       ? '<span class="material-symbols-rounded wind-icon">air</span>'
       : '<span class="material-symbols-rounded wind-icon" style="visibility:hidden">air</span>';
-
     const windRight = (rel.kind === 'head' || rel.kind === 'cross')
       ? '<span class="material-symbols-rounded wind-icon flip">air</span>'
       : '<span class="material-symbols-rounded wind-icon flip" style="visibility:hidden">air</span>';
@@ -211,7 +388,7 @@
         </div>
       </div>`;
 
-    // headline
+    // Headline summary by temp band + wind relation
     let headline;
     if      (tempF >= 90) headline = "It’s hot with a "  + rel.label;
     else if (tempF >= 75) headline = "It’s warm with a " + rel.label;
@@ -220,7 +397,7 @@
     else                  headline = "It’s chilly with a " + rel.label;
     sEl.textContent = headline;
 
-    // next-6h + advice
+    // Next 6 hours summary + precip likelihood
     let nextSentence = '';
     if (data.hourly && idx>=0) nextSentence = summarizeNextSix(data.hourly, idx);
 
