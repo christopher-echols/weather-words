@@ -22,12 +22,23 @@
       max-width: 600px;
       padding: 2rem;
     }
+    .location-btn {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+    #locationInputContainer {
+      display: none;
+      margin-top: 1rem;
+    }
     input {
       padding: 0.5rem;
       width: 100%;
       margin-top: 0.5rem;
     }
-    button {
+    button.submit-btn {
       margin-top: 0.5rem;
       padding: 0.5rem 1rem;
       cursor: pointer;
@@ -37,58 +48,68 @@
       font-size: 1rem;
     }
     hr { margin: 2rem 0; border: none; border-top: 1px solid #ccc; }
+    .weather-icon { font-size: 2rem; margin-right: 0.5rem; vertical-align: middle; }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Weather Words</h1>
+    <h2 id="summary">Loading...</h2>
     <div id="weather">Loading weather...</div>
 
-    <hr />
-    <h3>Enter location manually</h3>
-    <input id="locationInput" type="text" placeholder="City name (e.g., Knoxville)" />
-    <button onclick="fetchWeatherByCity()">Get Weather</button>
+    <button class="location-btn" onclick="toggleLocationInput()">📍</button>
+    <div id="locationInputContainer">
+      <input id="locationInput" type="text" placeholder="City name" />
+      <button class="submit-btn" onclick="fetchWeatherByCity()">Get Weather</button>
+    </div>
   </div>
 
   <script>
     const weatherDescriptions = {
-      0: "clear sky",
-      1: "mostly clear",
-      2: "partly cloudy",
-      3: "overcast",
-      45: "foggy",
-      48: "dense fog",
-      51: "light drizzle",
-      53: "drizzle",
-      55: "heavy drizzle",
-      61: "light rain",
-      63: "rain",
-      65: "heavy rain",
-      71: "light snow",
-      73: "snow",
-      75: "heavy snow"
+      0: {desc: "clear sky", icon: "☀️"},
+      1: {desc: "mostly clear", icon: "🌤️"},
+      2: {desc: "partly cloudy", icon: "⛅"},
+      3: {desc: "overcast", icon: "☁️"},
+      45: {desc: "foggy", icon: "🌫️"},
+      48: {desc: "dense fog", icon: "🌫️"},
+      51: {desc: "light drizzle", icon: "🌦️"},
+      53: {desc: "drizzle", icon: "🌦️"},
+      55: {desc: "heavy drizzle", icon: "🌧️"},
+      61: {desc: "light rain", icon: "🌧️"},
+      63: {desc: "rain", icon: "🌧️"},
+      65: {desc: "heavy rain", icon: "⛈️"},
+      71: {desc: "light snow", icon: "🌨️"},
+      73: {desc: "snow", icon: "❄️"},
+      75: {desc: "heavy snow", icon: "❄️"}
     };
+
+    function toggleLocationInput() {
+      const container = document.getElementById('locationInputContainer');
+      container.style.display = container.style.display === 'none' ? 'block' : 'none';
+    }
 
     function displayWeather(data) {
       const w = document.getElementById('weather');
+      const summary = document.getElementById('summary');
       if (!data || !data.current_weather) {
         w.textContent = 'Weather data not available.';
+        summary.textContent = '';
         return;
       }
       const tempF = Math.round(data.current_weather.temperature * 9/5 + 32);
       const windMph = Math.round(data.current_weather.windspeed / 1.609);
-      const desc = weatherDescriptions[data.current_weather.weathercode] || 'weather';
+      const code = data.current_weather.weathercode;
+      const desc = weatherDescriptions[code]?.desc || 'weather';
+      const icon = weatherDescriptions[code]?.icon || '';
 
-      let forecastMsg = '';
-      if (data.hourly && data.hourly.time && data.hourly.temperature_2m) {
-        const now = new Date().getTime();
-        const next6 = data.hourly.time.filter(t => new Date(t).getTime() > now).slice(0,6);
-        if (next6.length > 0) {
-          forecastMsg = ' Expect similar conditions in the next few hours.';
-        }
-      }
+      let summaryText = '';
+      if (tempF >= 85) summaryText = 'Hot';
+      else if (tempF >= 65) summaryText = 'Mild';
+      else summaryText = 'Cold';
+      if (windMph >= 15) summaryText += ' and Windy';
 
-      w.textContent = `It's ${tempF}° and ${desc}, with ${windMph} mph winds.${forecastMsg}`;
+      summary.textContent = summaryText;
+      w.innerHTML = `${icon} It's ${tempF}° and ${desc}, with ${windMph} mph winds.`;
     }
 
     function fetchWeather(lat, lon) {
@@ -104,7 +125,6 @@
     function fetchWeatherByCity() {
       const city = document.getElementById('locationInput').value.trim();
       if (!city) return;
-
       const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`;
       fetch(geoUrl)
         .then(r => r.json())
@@ -125,11 +145,11 @@
       navigator.geolocation.getCurrentPosition(
         pos => fetchWeather(pos.coords.latitude, pos.coords.longitude),
         () => {
-          document.getElementById('weather').textContent = 'Location permission denied. Enter a city above.';
+          document.getElementById('weather').textContent = 'Location permission denied. Tap the pin to enter a city.';
         }
       );
     } else {
-      document.getElementById('weather').textContent = 'Geolocation not supported. Enter a city above.';
+      document.getElementById('weather').textContent = 'Geolocation not supported. Tap the pin to enter a city.';
     }
   </script>
 </body>
