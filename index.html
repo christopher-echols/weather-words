@@ -39,7 +39,10 @@
 
     /* Typography hierarchy */
     .wx-icon{ line-height:1; margin:0 auto .35rem }
-    .material-symbols-rounded{ font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 48; font-size:clamp(3.25rem, 7.5vw, 4.75rem); display:block; color:currentColor; }
+    .icon-stack{ display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:.1rem }
+    .material-symbols-rounded{ font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 48; display:block; color:currentColor; }
+    .weather-symbol{ font-size:clamp(3.5rem, 8vw, 5rem); line-height:1 }
+    .bike-symbol{ font-size:clamp(2.25rem, 5vw, 3.25rem); line-height:1; transform:translateY(-2px) }
     h1{
       font-family:'Quattrocento', serif; font-weight:700;
       font-size:clamp(2.5rem, 6vw, 4rem); line-height:1.1;
@@ -271,7 +274,7 @@
       const rel = relationship(windFrom, isNaN(headingVal)? null : headingVal);
 
       // Icon above headline
-      iEl.innerHTML = meta.icon ? `<span class="material-symbols-rounded" aria-hidden="true">${meta.icon}</span>` : '';
+      iEl.innerHTML = meta.icon ? `<div class="icon-stack" aria-hidden="true"><span class="material-symbols-rounded weather-symbol">${meta.icon}</span><span class="material-symbols-rounded bike-symbol">directions_bike</span></div>` : '';
 
       // Headline (cyclist flavor)
       let headline;
