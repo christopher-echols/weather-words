@@ -11,31 +11,46 @@
       --fg:#26364d;         /* deep navy‑gray */
       --accent:#20a2ee;     /* calm blue */
       --accent2:#1ec278;    /* green for callouts */
+      --advice:#1e7f52;     /* softened green for advice line */
     }
     *{box-sizing:border-box}
+    html,body{height:100%}
     body{
-      margin:0;
-      padding:10%; /* keep the bookish margins */
-      height:100vh;
-      display:flex;align-items:center;justify-content:center;
+      margin:0; padding:10%;
+      min-height:100vh;
+      display:flex; align-items:center; justify-content:center;
       background:var(--bg); color:var(--fg); text-align:center;
       font-family:'Questrial', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       position:relative;
     }
-    .container{width:100%;}
+    .container{width:100%; animation:fadeIn 320ms ease-out both}
 
     /* Top-right controls */
-    .controls{position:absolute; top:12px; right:12px; display:flex; gap:.5rem; align-items:center;}
+    .controls{position:absolute; top:12px; right:12px; display:flex; gap:.5rem; align-items:center; opacity:.8}
+    .controls:hover{opacity:1}
     .icon-btn{background:none;border:none;cursor:pointer;font-size:1.6rem;color:var(--accent)}
     .mini{appearance:none; background:transparent; border:1px solid rgba(38,54,77,.25); color:var(--fg);
           padding:.25rem .5rem; border-radius:6px; font-size:.95rem}
 
-    /* Headline + forecast text */
-    h1{font-family:'Quattrocento', serif; font-size:3.6rem; margin:.25rem 0 1rem}
-    #weather{font-size:4.6rem; line-height:1.15; word-wrap:break-word}
-    .advice{margin-top:1rem; font-size:1.25rem; opacity:.9}
+    /* Typography hierarchy */
+    h1{
+      font-family:'Quattrocento', serif; font-weight:700;
+      font-size:clamp(2.5rem, 6vw, 4rem); line-height:1.1;
+      margin:.25rem 0 1rem; letter-spacing:-0.01em;
+    }
+    #weather{
+      font-family:'Questrial', sans-serif; font-weight:400;
+      font-size:clamp(1.5rem, 4vw, 2.25rem); line-height:1.35;
+      max-width:40ch; margin:0 auto 1.25rem; color:var(--fg);
+      letter-spacing:0.01em;
+    }
+    #advice{
+      font-family:'Questrial', sans-serif; font-weight:500;
+      font-size:clamp(1.1rem, 2.5vw, 1.5rem); line-height:1.4;
+      color:var(--advice); margin-top:.75rem; letter-spacing:0.01em;
+    }
 
-    /* Hidden manual location input */
+    /* Manual location popover */
     #locationInputContainer{display:none; position:absolute; top:52px; right:12px; background:#ffffffd9; color:#111; padding:.75rem; border-radius:8px; box-shadow:0 6px 24px rgba(0,0,0,.12); width:min(80vw,320px); text-align:left}
     #locationInputContainer input{width:100%; padding:.5rem .6rem; font-size:1rem; margin:.25rem 0 .5rem;}
     #locationInputContainer button{background:var(--accent2); color:white; border:none; border-radius:6px; padding:.45rem .7rem; font-size:1rem; cursor:pointer}
@@ -43,15 +58,16 @@
     .weather-icon{font-size:3rem; vertical-align:middle; margin-right:.4rem}
 
     @media (max-width: 480px){
-      h1{font-size:2.6rem}
-      #weather{font-size:3rem}
+      h1{font-size:clamp(2rem, 8vw, 2.6rem)}
+      #weather{font-size:clamp(1.25rem, 5vw, 1.9rem)}
     }
+
+    @keyframes fadeIn{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
   </style>
 </head>
 <body>
   <div class="container">
     <div class="controls">
-      <!-- rider heading + route type -->
       <select id="headingSelect" class="mini" title="Outbound heading">
         <option value="none">Heading</option>
         <option value="0">N</option>
@@ -101,9 +117,8 @@
     }
 
     function degDiff(a,b){
-      // minimal absolute angular difference 0..180
       const d = Math.abs(((a - b + 540) % 360) - 180);
-      return d;
+      return d; // 0..180
     }
 
     function bearingToText(b){
@@ -148,7 +163,6 @@
       const sliceGusts = (gusts||[]).slice(startIdx, endIdx);
       const firstHour = new Date(times[startIdx]).getHours();
 
-      // Precip detection
       const firstDrizzle = sliceCodes.findIndex(c=>categoryFor(c)==='drizzle');
       const firstRain    = sliceCodes.findIndex(c=>categoryFor(c)==='rain');
       const firstSnow    = sliceCodes.findIndex(c=>categoryFor(c)==='snow');
@@ -169,7 +183,6 @@
         return `${t.charAt(0).toUpperCase()+t.slice(1)} ${verb} ${whenPhrase(i)}.`;
       }
       if (Math.abs(delta)>=4){ return (delta>0)?'Temperatures will climb a bit over the next few hours.':'Temperatures will ease down over the next few hours.'; }
-      // Gust trend
       if (sliceGusts.length>=2){
         const g0 = Math.round(sliceGusts[0]||0), g1 = Math.round(sliceGusts[sliceGusts.length-1]||0);
         if (g1-g0 >= 5) return 'Gusts will strengthen a little in the next few hours.';
@@ -193,20 +206,17 @@
 
       const tempF = fFromC(data.current_weather.temperature);
       const windMph = mph(data.current_weather.windspeed);
-      const windFrom = data.current_weather.winddirection; // degrees FROM
+      const windFrom = data.current_weather.winddirection;
       const code = data.current_weather.weathercode; const meta = WX[code] || {desc:'weather', icon:''};
 
-      // Find current + next-hour index for hourly arrays
       let idx = (data.hourly?.time||[]).findIndex(t => new Date(t).getTime() > Date.now());
       if (idx===-1) idx = 0; const curIdx = Math.max(0, idx-1);
       const feelF = fFromC((data.hourly?.apparent_temperature||[])[curIdx] ?? data.current_weather.temperature);
       const gustNow = Math.round((data.hourly?.windgusts_10m||[])[curIdx] || windMph);
 
-      // Rider heading relationship
       const headingVal = parseInt($('#headingSelect').value,10);
       const rel = relationship(windFrom, isNaN(headingVal)? null : headingVal);
 
-      // Headline
       let headline;
       if (tempF >= 90) headline = "It's hot with a "+(rel.label);
       else if (tempF >= 75) headline = "It's warm with a "+(rel.label);
@@ -215,24 +225,19 @@
       else headline = "It's chilly with a "+(rel.label);
       sEl.textContent = headline;
 
-      // Next-6h sentence
       let nextSentence = '';
       if (data.hourly && idx>=0){ nextSentence = summarizeNextSix(data.hourly, idx); }
 
-      // Precip likely soon flag for advice
       let nextPrecipLikely = false;
       if (data.hourly && idx>=0){
         const codes = data.hourly.weathercode.slice(idx, Math.min(idx+6, data.hourly.weathercode.length));
         nextPrecipLikely = codes.some(c => ['drizzle','rain','snow','storm'].includes(categoryFor(c)));
       }
 
-      // Current sentence (cyclist-centered)
       const windText = `${windMph} mph ${rel.label} from the ${bearingToText(windFrom)}` + (gustNow>windMph?`; gusts to ${gustNow}`:'');
       const nowSentence = `${meta.icon?meta.icon+' ':''}Right now it's ${tempF}° (feels ${feelF}°) and ${meta.desc}, with ${windText}.`;
 
       wEl.textContent = `${nowSentence} ${nextSentence}`.trim();
-
-      // Action line
       aEl.textContent = buildAdvice(tempF, feelF, rel.kind, windMph, nextPrecipLikely, false);
 
       lastData = data;
@@ -254,7 +259,6 @@
       }).catch(()=> $('#weather').textContent='Error finding location.');
     }
 
-    // Geolocation on load
     if(navigator.geolocation){
       navigator.geolocation.getCurrentPosition(
         pos => fetchWeather(pos.coords.latitude, pos.coords.longitude),
@@ -262,7 +266,6 @@
       );
     } else { $('#weather').textContent='Geolocation not supported. Tap the pin to enter a city.'; }
 
-    // Recompute when rider changes heading/route
     ['headingSelect','routeType'].forEach(id=>{
       document.addEventListener('change', e=>{
         if(e.target && e.target.id===id && lastData){ render(lastData); }
