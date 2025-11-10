@@ -59,9 +59,9 @@
       <div class="icon-stack">
         <span class="material-symbols-rounded weather-symbol">hourglass_empty</span>
         <div class="bike-wrap">
-          <span class="material-symbols-rounded wind-icon" style="visibility:hidden">arrow_forward</span>
+          <span class="material-symbols-rounded wind-icon" style="visibility:hidden">air</span>
           <span class="material-symbols-rounded bike-symbol">directions_bike</span>
-          <span class="material-symbols-rounded wind-icon" style="visibility:hidden">arrow_back</span>
+          <span class="material-symbols-rounded wind-icon flip" style="visibility:hidden">air</span>
         </div>
       </div>
     </div>
@@ -85,9 +85,14 @@
     2:{desc:'partly cloudy', icon:'partly_cloudy_day'}, 3:{desc:'overcast', icon:'cloud'},
     45:{desc:'foggy', icon:'foggy'}, 48:{desc:'dense fog', icon:'foggy'},
     51:{desc:'light drizzle', icon:'rainy'}, 53:{desc:'drizzle', icon:'rainy'}, 55:{desc:'heavy drizzle', icon:'rainy'},
+    56:{desc:'freezing drizzle', icon:'rainy'}, 57:{desc:'freezing drizzle', icon:'rainy'},
     61:{desc:'light rain', icon:'rainy'}, 63:{desc:'rain', icon:'rainy'}, 65:{desc:'heavy rain', icon:'thunderstorm'},
+    66:{desc:'freezing rain', icon:'rainy'}, 67:{desc:'freezing rain', icon:'rainy'},
     71:{desc:'light snow', icon:'cloudy_snowing'}, 73:{desc:'snow', icon:'cloudy_snowing'}, 75:{desc:'heavy snow', icon:'cloudy_snowing'},
-    95:{desc:'thunderstorms', icon:'thunderstorm'}
+    77:{desc:'snow grains', icon:'cloudy_snowing'},
+    80:{desc:'rain showers', icon:'rainy'}, 81:{desc:'rain showers', icon:'rainy'}, 82:{desc:'heavy showers', icon:'rainy'},
+    85:{desc:'snow showers', icon:'cloudy_snowing'}, 86:{desc:'snow showers', icon:'cloudy_snowing'},
+    95:{desc:'thunderstorms', icon:'thunderstorm'}, 96:{desc:'thunderstorms', icon:'thunderstorm'}, 99:{desc:'thunderstorms', icon:'thunderstorm'}
   };
 
   const $ = s => document.querySelector(s);
@@ -106,7 +111,12 @@
 
   /* --- Wind + units --- */
   function degDiff(a,b){ return Math.abs(((a - b + 540) % 360) - 180); }
-  function bearingToText(b){ const d = ['N','NE','E','SE','S','SW','W','NW']; return d[Math.round(b/45) % 8]; }
+  function bearingWord(b){
+    if (typeof b !== 'number' || !isFinite(b)) return null;
+    const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+    const norm = ((b % 360) + 360) % 360;
+    return dirs[Math.round(norm/45) % 8];
+  }
   function relationship(wFromDeg, rHeading){ if (rHeading == null || isNaN(rHeading)) return {kind:'wind', label:'wind'}; const diff = degDiff(wFromDeg, rHeading); if (diff <= 45) return {kind:'head', label:'headwind'}; if (diff >= 135) return {kind:'tail', label:'tailwind'}; return {kind:'cross', label:'crosswind'}; }
   function mph(kmh){ return Math.round(kmh / 1.609); }
   function fFromC(c){ return Math.round(c * 9/5 + 32); }
@@ -119,6 +129,16 @@
   function adviceSentence(nowF, feelF, windKind, windMph, nextPrecipLikely){ const parts=[]; if (nextPrecipLikely) parts.push('Pack a light shell'); if (feelF<=50 || (nowF<58 && windMph>=10)) parts.push('An extra light layer will keep you warm enough'); if (nowF>=85 || feelF>=88) parts.push('Bring extra water and a pinch of electrolytes'); if (windKind==='cross' && windMph>=15) parts.push('Watch for crosswind gusts on open sections'); return parts.length ? parts.join('. ') + '.' : 'Wear whatever’s comfortable — standard kit is perfect today.'; }
   function chooseTheme(tempF, code){ const cat = categoryFor(code); if (cat==='snow') return 'theme-snow'; if (['rain','drizzle','storm'].includes(cat)) return 'theme-rain'; if (tempF >= 80) return 'theme-warm'; if (tempF <= 50) return 'theme-cool'; return 'theme-neutral'; }
   function applyTheme(theme){ ['theme-neutral','theme-cool','theme-warm','theme-rain','theme-snow'].forEach(c=>document.body.classList.remove(c)); document.body.classList.add(theme); }
+
+  /* --- meta fallback to avoid undefined desc/icon --- */
+  function metaFor(code){
+    const m = WX[code];
+    if (m) return m;
+    const cat = categoryFor(code);
+    const iconBy = { drizzle:'rainy', rain:'rainy', snow:'cloudy_snowing', storm:'thunderstorm', fog:'foggy', dry:'partly_cloudy_day', other:'cloud' };
+    const descBy = { drizzle:'light rain', rain:'rain', snow:'snow', storm:'thunderstorms', fog:'foggy', dry:'fair skies', other:'conditions' };
+    return { desc: descBy[cat], icon: iconBy[cat] };
+  }
 
   /* --- Preferences: save & load --- */
   function saveCoords(lat,lon){ try{ localStorage.setItem('ww_last_coords', JSON.stringify({lat,lon})); }catch(_){} }
@@ -135,7 +155,7 @@
     const windMph = mph(data.current_weather.windspeed);
     const windFrom= data.current_weather.winddirection;
     const code    = data.current_weather.weathercode;
-    const meta    = WX[code] || {desc:'conditions', icon:'wb_sunny'};
+    const meta    = metaFor(code);
 
     applyTheme(chooseTheme(tempF, code));
 
@@ -148,24 +168,24 @@
     const headingVal = parseInt($('#headingSelect').value,10);
     const rel = relationship(windFrom, isNaN(headingVal) ? null : headingVal);
 
-// Build icon stack with wind adornments using "air" icons
-const windLeft  = (rel.kind === 'tail' || rel.kind === 'cross')
-  ? '<span class="material-symbols-rounded wind-icon">air</span>'
-  : '<span class="material-symbols-rounded wind-icon" style="visibility:hidden">air</span>';
+    // Build icon stack with wind adornments using "air" icons
+    const windLeft  = (rel.kind === 'tail' || rel.kind === 'cross')
+      ? '<span class="material-symbols-rounded wind-icon">air</span>'
+      : '<span class="material-symbols-rounded wind-icon" style="visibility:hidden">air</span>';
 
-const windRight = (rel.kind === 'head' || rel.kind === 'cross')
-  ? '<span class="material-symbols-rounded wind-icon flip">air</span>'
-  : '<span class="material-symbols-rounded wind-icon flip" style="visibility:hidden">air</span>';
+    const windRight = (rel.kind === 'head' || rel.kind === 'cross')
+      ? '<span class="material-symbols-rounded wind-icon flip">air</span>'
+      : '<span class="material-symbols-rounded wind-icon flip" style="visibility:hidden">air</span>';
 
-iEl.innerHTML = `
-  <div class="icon-stack" aria-hidden="true">
-    <span class="material-symbols-rounded weather-symbol">${meta.icon}</span>
-    <div class="bike-wrap">
-      ${windLeft}
-      <span class="material-symbols-rounded bike-symbol">directions_bike</span>
-      ${windRight}
-    </div>
-  </div>`;
+    iEl.innerHTML = `
+      <div class="icon-stack" aria-hidden="true">
+        <span class="material-symbols-rounded weather-symbol">${meta.icon}</span>
+        <div class="bike-wrap">
+          ${windLeft}
+          <span class="material-symbols-rounded bike-symbol">directions_bike</span>
+          ${windRight}
+        </div>
+      </div>`;
 
     // headline
     let headline;
@@ -187,7 +207,11 @@ iEl.innerHTML = `
     }
 
     const route = $('#routeType').value;
-    const windText = `${windMph} mph ${rel.label} from the ${bearingToText(windFrom)}` + (gustNow>windMph?`; gusts to ${gustNow}`:'');
+    const dirWord = bearingWord(windFrom);
+    const windText =
+      `${isFinite(windMph) ? windMph : 0} mph ${rel.label}` +
+      (dirWord ? ` from the ${dirWord}` : '') +
+      ((Number.isFinite(gustNow) && gustNow > windMph) ? `; gusts to ${gustNow}` : '');
     const hint = routeHint(rel.kind, route);
 
     const seed = seedFrom(new Date().toISOString().slice(0,13), tempF, feelF, windMph, windFrom);
