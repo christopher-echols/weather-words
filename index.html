@@ -29,7 +29,7 @@
     .bike-symbol{ font-size:clamp(3.5rem, 7.5vw, 5rem); line-height:1; transform:translateY(-3px) }
     .bike-wrap{display:inline-flex; align-items:center; gap:.35rem}
     .wind-icon{font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24; font-size:clamp(1.6rem,4.2vw,2.2rem); line-height:1; opacity:.35}
-
+    .wind-icon.flip {transform: rotate(180deg);}
     h1{font-family:'Quattrocento',serif;font-weight:700;font-size:clamp(2.5rem,6vw,4rem);line-height:1.1;margin:.1rem 0 1rem;letter-spacing:-0.01em;transition:color 420ms ease;}
     #weather{font-family:'Questrial',sans-serif;font-weight:400;font-size:clamp(1.5rem,4vw,2.25rem);line-height:1.35;max-width:40ch;margin:0 auto 1.25rem;letter-spacing:0.01em;transition:color 420ms ease;}
     #advice{font-family:'Quattrocento',serif;font-weight:700;font-size:clamp(1.1rem,2.5vw,1.5rem);line-height:1.35;margin-top:.75rem;letter-spacing:-0.005em;transition:color 420ms ease;}
@@ -148,14 +148,14 @@
     const headingVal = parseInt($('#headingSelect').value,10);
     const rel = relationship(windFrom, isNaN(headingVal) ? null : headingVal);
 
-    // Build icon stack with wind adornments (air icons for wind direction)
-const windLeft  = (rel.kind==='tail' || rel.kind==='cross')
+// Build icon stack with wind adornments using "air" icons
+const windLeft  = (rel.kind === 'tail' || rel.kind === 'cross')
   ? '<span class="material-symbols-rounded wind-icon">air</span>'
   : '<span class="material-symbols-rounded wind-icon" style="visibility:hidden">air</span>';
 
-const windRight = (rel.kind==='head' || rel.kind==='cross')
-  ? '<span class="material-symbols-rounded wind-icon">air</span>'
-  : '<span class="material-symbols-rounded wind-icon" style="visibility:hidden">air</span>';
+const windRight = (rel.kind === 'head' || rel.kind === 'cross')
+  ? '<span class="material-symbols-rounded wind-icon flip">air</span>'
+  : '<span class="material-symbols-rounded wind-icon flip" style="visibility:hidden">air</span>';
 
 iEl.innerHTML = `
   <div class="icon-stack" aria-hidden="true">
