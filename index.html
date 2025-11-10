@@ -7,11 +7,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Quattrocento:wght@700&family=Questrial&display=swap" rel="stylesheet">
   <style>
     :root{
-      --bg:#dfeaf0;         /* soft off‑white */
-      --fg:#26364d;         /* deep navy‑gray */
       --accent:#20a2ee;     /* calm blue */
       --accent2:#1ec278;    /* green for callouts */
-      --advice:#1e7f52;     /* softened green for advice line */
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -19,42 +16,57 @@
       margin:0; padding:10%;
       min-height:100vh;
       display:flex; align-items:center; justify-content:center;
-      background:var(--bg); color:var(--fg); text-align:center;
+      text-align:center;
       font-family:'Questrial', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      transition: background-color 420ms ease, color 420ms ease;
     }
+    /* Theme palettes (muted) */
+    body.theme-neutral{ background:#e9efeF; color:#26364d; }
+    body.theme-cool   { background:#dfeaf0; color:#26364d; }
+    body.theme-warm   { background:#f3eadf; color:#3b2f2a; }
+    body.theme-rain   { background:#e6edf1; color:#22303d; }
+    body.theme-snow   { background:#f5f7fa; color:#2c3a4a; }
+
     .container{width:100%; animation:fadeIn 320ms ease-out both; position:relative}
 
     /* Controls separated and fixed in the corner */
     .controls{position:fixed; top:12px; right:12px; display:flex; gap:.5rem; align-items:center; opacity:.85; z-index:10}
     .controls:hover{opacity:1}
     .icon-btn{background:none;border:none;cursor:pointer;font-size:1.6rem;color:var(--accent)}
-    .mini{appearance:none; background:transparent; border:1px solid rgba(38,54,77,.25); color:var(--fg);
+    .mini{appearance:none; background:transparent; border:1px solid rgba(38,54,77,.25); color:inherit;
           padding:.25rem .5rem; border-radius:6px; font-size:.95rem}
 
     /* Typography hierarchy */
+    .wx-icon{font-size:clamp(3rem, 7vw, 4.25rem); line-height:1; margin:0 auto .35rem}
     h1{
       font-family:'Quattrocento', serif; font-weight:700;
       font-size:clamp(2.5rem, 6vw, 4rem); line-height:1.1;
-      margin:.25rem 0 1rem; letter-spacing:-0.01em;
+      margin:.1rem 0 1rem; letter-spacing:-0.01em;
+      transition: color 420ms ease;
     }
     #weather{
       font-family:'Questrial', sans-serif; font-weight:400;
       font-size:clamp(1.5rem, 4vw, 2.25rem); line-height:1.35;
-      max-width:40ch; margin:0 auto 1.25rem; color:var(--fg);
-      letter-spacing:0.01em;
+      max-width:40ch; margin:0 auto 1.25rem; letter-spacing:0.01em;
+      transition: color 420ms ease;
     }
     #advice{
-      font-family:'Quattrocento', serif; font-weight:700; /* match H1 font */
+      font-family:'Quattrocento', serif; font-weight:700;
       font-size:clamp(1.1rem, 2.5vw, 1.5rem); line-height:1.35;
-      color:var(--advice); margin-top:.75rem; letter-spacing:-0.005em;
+      margin-top:.75rem; letter-spacing:-0.005em;
+      transition: color 420ms ease;
     }
+    /* Advice color per theme */
+    body.theme-neutral #advice{ color:#1e7f52 }
+    body.theme-cool    #advice{ color:#1e7f52 }
+    body.theme-warm    #advice{ color:#7d5a3a }
+    body.theme-rain    #advice{ color:#1e6a7f }
+    body.theme-snow    #advice{ color:#315a7d }
 
     /* Manual location popover separated from layout */
     #locationInputContainer{display:none; position:fixed; top:52px; right:12px; background:#ffffffd9; color:#111; padding:.75rem; border-radius:8px; box-shadow:0 6px 24px rgba(0,0,0,.12); width:min(80vw,320px); text-align:left; z-index:11}
     #locationInputContainer input{width:100%; padding:.5rem .6rem; font-size:1rem; margin:.25rem 0 .5rem;}
     #locationInputContainer button{background:var(--accent2); color:white; border:none; border-radius:6px; padding:.45rem .7rem; font-size:1rem; cursor:pointer}
-
-    .weather-icon{font-size:3rem; vertical-align:middle; margin-right:.4rem}
 
     @media (max-width: 480px){
       h1{font-size:clamp(2rem, 8vw, 2.6rem)}
@@ -86,6 +98,7 @@
   </div>
 
   <div class="container">
+    <div id="wxIcon" class="wx-icon" aria-hidden="true">☀️</div>
     <h1 id="summary">Loading...</h1>
     <div id="weather">Loading weather…</div>
     <div id="advice" class="advice"></div>
@@ -192,23 +205,50 @@
       return 'It should stay fairly steady and dry for a while.';
     }
 
+    function routeHint(kind, routeType){
+      if(routeType!=='outback') return '';
+      if(kind==='head') return ' Tailwind on the way back.';
+      if(kind==='tail') return ' Headwind on the return.';
+      if(kind==='cross') return ' Crosswind both ways.';
+      return '';
+    }
+
     function adviceSentence(nowF, feelF, windKind, windMph, nextPrecipLikely){
       const parts=[];
       if (nextPrecipLikely) parts.push('Pack a light shell');
       if (feelF<=50 || (nowF<58 && windMph>=10)) parts.push('An extra light layer will keep you warm enough');
       if (nowF>=85 || feelF>=88) parts.push('Bring extra water and a pinch of electrolytes');
       if (windKind==='cross' && windMph>=15) parts.push('Watch for crosswind gusts on open sections');
-      return parts.length? parts.join('. ') + '.' : '';
+      if(!parts.length) return 'Wear whatever’s comfortable — standard kit is perfect today.';
+      return parts.join('. ') + '.';
+    }
+
+    function chooseTheme(tempF, code){
+      const cat = categoryFor(code);
+      if (cat==='snow') return 'theme-snow';
+      if (cat==='rain' || cat==='drizzle' || cat==='storm') return 'theme-rain';
+      if (tempF >= 80) return 'theme-warm';
+      if (tempF <= 50) return 'theme-cool';
+      return 'theme-neutral';
+    }
+
+    function applyTheme(theme){
+      const classes = ['theme-neutral','theme-cool','theme-warm','theme-rain','theme-snow'];
+      classes.forEach(c => document.body.classList.remove(c));
+      document.body.classList.add(theme);
     }
 
     function render(data){
-      const wEl = $('#weather'); const sEl = $('#summary'); const aEl = $('#advice');
-      if(!data || !data.current_weather){ sEl.textContent=''; wEl.textContent='Weather data not available.'; aEl.textContent=''; return; }
+      const wEl = $('#weather'); const sEl = $('#summary'); const aEl = $('#advice'); const iEl = $('#wxIcon');
+      if(!data || !data.current_weather){ sEl.textContent=''; wEl.textContent='Weather data not available.'; aEl.textContent=''; iEl.textContent=''; return; }
 
       const tempF = fFromC(data.current_weather.temperature);
       const windMph = mph(data.current_weather.windspeed);
       const windFrom = data.current_weather.winddirection;
       const code = data.current_weather.weathercode; const meta = WX[code] || {desc:'weather', icon:''};
+
+      // THEME — set based on conditions and temp (with CSS transition)
+      applyTheme(chooseTheme(tempF, code));
 
       let idx = (data.hourly?.time||[]).findIndex(t => new Date(t).getTime() > Date.now());
       if (idx===-1) idx = 0; const curIdx = Math.max(0, idx-1);
@@ -218,26 +258,33 @@
       const headingVal = parseInt($('#headingSelect').value,10);
       const rel = relationship(windFrom, isNaN(headingVal)? null : headingVal);
 
-      // Headline with icon moved here
-      let headline;
-      if (tempF >= 90) headline = "It's hot with a "+(rel.label);
-      else if (tempF >= 75) headline = "It's warm with a "+(rel.label);
-      else if (tempF >= 60) headline = "It's mild with a "+(rel.label);
-      else if (tempF >= 45) headline = "It's cool with a "+(rel.label);
-      else headline = "It's chilly with a "+(rel.label);
-      sEl.innerHTML = `${meta.icon?meta.icon+' ':''}${headline}`;
+      // Icon above headline
+      iEl.textContent = meta.icon || '';
 
+      // Headline (cyclist flavor)
+      let headline;
+      if (tempF >= 90) headline = "It’s hot with a "+(rel.label);
+      else if (tempF >= 75) headline = "It’s warm with a "+(rel.label);
+      else if (tempF >= 60) headline = "It’s mild with a "+(rel.label);
+      else if (tempF >= 45) headline = "It’s cool with a "+(rel.label);
+      else headline = "It’s chilly with a "+(rel.label);
+      sEl.textContent = headline;
+
+      // Next‑6h single sentence
       let nextSentence = '';
       if (data.hourly && idx>=0){ nextSentence = summarizeNextSix(data.hourly, idx); }
 
+      // Precip likely soon flag for advice
       let nextPrecipLikely = false;
       if (data.hourly && idx>=0){
         const codes = data.hourly.weathercode.slice(idx, Math.min(idx+6, data.hourly.weathercode.length));
         nextPrecipLikely = codes.some(c => ['drizzle','rain','snow','storm'].includes(categoryFor(c)));
       }
 
+      const route = $('#routeType').value;
       const windText = `${windMph} mph ${rel.label} from the ${bearingToText(windFrom)}` + (gustNow>windMph?`; gusts to ${gustNow}`:'');
-      const nowSentence = `Right now it's ${tempF}° (feels ${feelF}°) and ${meta.desc}, with ${windText}.`;
+      const hint = routeHint(rel.kind, route);
+      const nowSentence = `Right now it’s ${tempF}° (feels ${feelF}°) and ${meta.desc}, with ${windText}.${hint ? ' '+hint : ''}`;
 
       wEl.textContent = `${nowSentence} ${nextSentence}`.trim();
       aEl.textContent = adviceSentence(tempF, feelF, rel.kind, windMph, nextPrecipLikely);
