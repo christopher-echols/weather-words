@@ -1,23 +1,54 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Simple Weather App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather Words</title>
+  <link rel="manifest" href="manifest.json">
   <style>
-    body { font-family: sans-serif; padding: 1.5rem; max-width: 600px; margin: auto; }
-    #weather { margin-top: 1rem; }
-    input { padding: 0.4rem; margin-top: 0.5rem; width: 100%; }
-    button { margin-top: 0.5rem; padding: 0.4rem 0.8rem; cursor: pointer; }
+    body {
+      font-family: Georgia, serif;
+      background: #f7f4ef;
+      color: #2a2a2a;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      text-align: center;
+    }
+    .container {
+      max-width: 600px;
+      padding: 2rem;
+    }
+    input {
+      padding: 0.5rem;
+      width: 100%;
+      margin-top: 0.5rem;
+    }
+    button {
+      margin-top: 0.5rem;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      background: #ddd;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    hr { margin: 2rem 0; border: none; border-top: 1px solid #ccc; }
   </style>
 </head>
 <body>
-  <h1>Weather</h1>
-  <div id="weather">Fetching weather...</div>
+  <div class="container">
+    <h1>Weather Words</h1>
+    <div id="weather">Loading weather...</div>
 
-  <hr/>
-  <h3>Enter location manually</h3>
-  <input id="locationInput" type="text" placeholder="City name (e.g., Knoxville)" />
-  <button onclick="fetchWeatherByCity()">Get Weather</button>
+    <hr />
+    <h3>Enter location manually</h3>
+    <input id="locationInput" type="text" placeholder="City name (e.g., Knoxville)" />
+    <button onclick="fetchWeatherByCity()">Get Weather</button>
+  </div>
 
   <script>
     const weatherDescriptions = {
@@ -35,27 +66,8 @@
       65: "heavy rain",
       71: "light snow",
       73: "snow",
-      75: "heavy snow",
-      95: "thunderstorms",
-      96: "thunderstorms with light hail",
-      99: "thunderstorms with heavy hail"
+      75: "heavy snow"
     };
-
-    function cToF(c) {
-      return Math.round((c * 9/5) + 32);
-    }
-
-    function kmhToMph(kmh) {
-      return Math.round(kmh * 0.621371);
-    }
-
-    function describeWeather(data) {
-      const tempF = cToF(data.current_weather.temperature);
-      const windMph = kmhToMph(data.current_weather.windspeed);
-      const code = data.current_weather.weathercode;
-      const desc = weatherDescriptions[code] || "current conditions";
-      return `It's ${tempF}°F and ${desc}, with winds around ${windMph} mph.`;
-    }
 
     function displayWeather(data) {
       const w = document.getElementById('weather');
@@ -63,11 +75,24 @@
         w.textContent = 'Weather data not available.';
         return;
       }
-      w.textContent = describeWeather(data);
+      const tempF = Math.round(data.current_weather.temperature * 9/5 + 32);
+      const windMph = Math.round(data.current_weather.windspeed / 1.609);
+      const desc = weatherDescriptions[data.current_weather.weathercode] || 'weather';
+
+      let forecastMsg = '';
+      if (data.hourly && data.hourly.time && data.hourly.temperature_2m) {
+        const now = new Date().getTime();
+        const next6 = data.hourly.time.filter(t => new Date(t).getTime() > now).slice(0,6);
+        if (next6.length > 0) {
+          forecastMsg = ' Expect similar conditions in the next few hours.';
+        }
+      }
+
+      w.textContent = `It's ${tempF}° and ${desc}, with ${windMph} mph winds.${forecastMsg}`;
     }
 
     function fetchWeather(lat, lon) {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,weathercode`;
       fetch(url)
         .then(r => r.json())
         .then(displayWeather)
