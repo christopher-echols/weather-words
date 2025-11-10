@@ -426,10 +426,46 @@
   }
 
   function fetchWeather(lat, lon){
-    saveCoords(lat,lon);
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,apparent_temperature,weathercode,windgusts_10m`;
-    fetch(url).then(r=>r.json()).then(render).catch(()=>{ $('#weather').textContent='Error fetching weather.'; });
+  try {
+    const la = Number(lat), lo = Number(lon);
+    if (!Number.isFinite(la) || !Number.isFinite(lo)) {
+      $('#weather').textContent = 'Pick a location first — coordinates missing.';
+      return;
+    }
+
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&current_weather=true&hourly=temperature_2m,apparent_temperature,weathercode,windgusts_10m`;
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10000); // 10s timeout
+
+    fetch(url, { signal: ctrl.signal })
+      .then(async (r) => {
+        clearTimeout(timer);
+        if (!r.ok) {
+          const txt = await r.text().catch(() => '');
+          throw new Error(`Open-Meteo ${r.status} ${r.statusText}${txt ? ` — ${txt.slice(0,180)}` : ''}`);
+        }
+        const data = await r.json();
+        render(data);
+        try { localStorage.setItem('ww_last_payload', JSON.stringify(data)); } catch {}
+      })
+      .catch((err) => {
+        console.error('Weather fetch failed:', err);
+        const cached = (() => { try { return JSON.parse(localStorage.getItem('ww_last_payload') || ''); } catch { return null; } })();
+        if (cached && cached.current_weather) {
+          // soft banner + stale render
+          $('#summary').textContent = ($('#summary').textContent || 'Forecast') + ' (stale)';
+          $('#weather').textContent = 'Network issue — showing last saved forecast.';
+          render(cached);
+        } else {
+          $('#weather').textContent = 'Network error fetching weather. Tap the pin to choose a place, or try again.';
+        }
+      });
+  } catch (e) {
+    console.error('Unexpected error:', e);
+    $('#weather').textContent = 'Unexpected error. See console for details.';
   }
+}
 
   // Load prefs and initialize location
   loadPrefs();
