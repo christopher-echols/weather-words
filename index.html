@@ -57,7 +57,7 @@
     <div id="geoResults"></div>
   </div>
 
-<script>
+  <script>
   /* ========= CORE WEATHER + VARIATION + GEO ========= */
   const WX = {
     0:{desc:'clear sky', icon:'wb_sunny'}, 1:{desc:'mostly clear', icon:'partly_cloudy_day'},
@@ -196,7 +196,7 @@
     }
     if (Math.abs(delta) >= 4) return (delta>0) ? 'Temperatures will climb a bit over the next few hours.' : 'Temperatures will ease down over the next few hours.';
     if (sliceGusts.length >= 2){
-      const g0 = Math.round(sliceGusts[0]||0), g1 = Math.round(sliceGusts[sliceGusts.length-1]||0);
+      const g0 = Math.round(sliceGusts[0]||0), g1 = Math.round(sliceGusts[sliceTemps.length-1]||0);
       if (g1-g0 >= 5) return 'Gusts will strengthen a little in the next few hours.';
       if (g0-g1 >= 5) return 'Gusts will ease a little over the next few hours.';
     }
