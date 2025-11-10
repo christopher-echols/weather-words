@@ -148,13 +148,24 @@
     const headingVal = parseInt($('#headingSelect').value,10);
     const rel = relationship(windFrom, isNaN(headingVal) ? null : headingVal);
 
-    // Build icon stack with wind adornments (head/cross wind on left, tail/cross on right)
-    const windLeft  = (rel.kind==='head' || rel.kind==='cross') ? '<span class="material-symbols-rounded wind-icon">arrow_forward</span>' : '<span class="material-symbols-rounded wind-icon" style="visibility:hidden">arrow_forward</span>';
-    const windRight = (rel.kind==='tail' || rel.kind==='cross') ? '<span class="material-symbols-rounded wind-icon">arrow_back</span>' : '<span class="material-symbols-rounded wind-icon" style="visibility:hidden">arrow_back</span>';
-    iEl.innerHTML = `<div class="icon-stack" aria-hidden="true">
-      <span class="material-symbols-rounded weather-symbol">${meta.icon}</span>
-      <div class="bike-wrap">${windLeft}<span class="material-symbols-rounded bike-symbol">directions_bike</span>${windRight}</div>
-    </div>`;
+    // Build icon stack with wind adornments (air icons for wind direction)
+const windLeft  = (rel.kind==='tail' || rel.kind==='cross')
+  ? '<span class="material-symbols-rounded wind-icon">air</span>'
+  : '<span class="material-symbols-rounded wind-icon" style="visibility:hidden">air</span>';
+
+const windRight = (rel.kind==='head' || rel.kind==='cross')
+  ? '<span class="material-symbols-rounded wind-icon">air</span>'
+  : '<span class="material-symbols-rounded wind-icon" style="visibility:hidden">air</span>';
+
+iEl.innerHTML = `
+  <div class="icon-stack" aria-hidden="true">
+    <span class="material-symbols-rounded weather-symbol">${meta.icon}</span>
+    <div class="bike-wrap">
+      ${windLeft}
+      <span class="material-symbols-rounded bike-symbol">directions_bike</span>
+      ${windRight}
+    </div>
+  </div>`;
 
     // headline
     let headline;
