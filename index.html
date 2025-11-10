@@ -95,13 +95,93 @@
       65: {desc: "heavy rain", icon: "⛈️"},
       71: {desc: "light snow", icon: "🌨️"},
       73: {desc: "snow", icon: "❄️"},
-      75: {desc: "heavy snow", icon: "❄️"}
+      75: {desc: "heavy snow", icon: "❄️"},
+      95: {desc: "thunderstorms", icon: "⛈️"}
     };
+
+    // Helper: group weather code into a coarse category
+    function categoryFor(code) {
+      if (code == null) return 'other';
+      if ([51,53,55].includes(code)) return 'drizzle';
+      if ([61,63,65].includes(code)) return 'rain';
+      if ([71,73,75].includes(code)) return 'snow';
+      if ([95].includes(code)) return 'storm';
+      if ([45,48].includes(code)) return 'fog';
+      if ([0,1,2,3].includes(code)) return 'dry';
+      return 'other';
+    }
+
+    // Helper: time-of-day phrasing
+    function periodLabel(hour) {
+      if (hour >= 5 && hour <= 11) return 'this morning';
+      if (hour >= 12 && hour <= 16) return 'this afternoon';
+      if (hour >= 17 && hour <= 21) return 'this evening';
+      return 'overnight';
+    }
 
     function toggleLocationInput() {
       const container = document.getElementById('locationInputContainer');
       container.style.display = container.style.display === 'none' ? 'block' : 'none';
     }
+
+    function summarizeNextSix(hourly, startIdx) {
+      const times = hourly.time;
+      const tempsC = hourly.temperature_2m;
+      const codes = hourly.weathercode;
+      if (!times || !tempsC || !codes) return '';
+
+      const endIdx = Math.min(startIdx + 6, times.length);
+      if (startIdx < 0 || startIdx >= endIdx) return '';
+
+      const sliceCodes = codes.slice(startIdx, endIdx);
+      const sliceTempsC = tempsC.slice(startIdx, endIdx);
+      const firstHour = new Date(times[startIdx]).getHours();
+
+      // Detect first occurrence of precip category
+      const firstDrizzle = sliceCodes.findIndex(c => categoryFor(c) === 'drizzle');
+      const firstRain    = sliceCodes.findIndex(c => categoryFor(c) === 'rain');
+      const firstSnow    = sliceCodes.findIndex(c => categoryFor(c) === 'snow');
+      const firstStorm   = sliceCodes.findIndex(c => categoryFor(c) === 'storm');
+      const hasPrecip = [firstDrizzle, firstRain, firstSnow, firstStorm].some(i => i !== -1);
+
+      // Build temperature trend (°F)
+      const firstF = Math.round(sliceTempsC[0] * 9/5 + 32);
+      const lastF  = Math.round(sliceTempsC.slice(-1)[0] * 9/5 + 32);
+      const deltaF = lastF - firstF;
+
+      // Choose period phrase based on when precip starts
+      function whenPhrase(offset) {
+        if (offset <= 1) return 'soon';
+        const hr = (firstHour + offset) % 24;
+        return 'by ' + periodLabel(hr);
+      }
+
+      // Decide on summary sentence
+      if (hasPrecip) {
+        // pick the earliest precip type
+        const tuples = [
+          {type: 'thunderstorms', idx: firstStorm},
+          {type: 'snow', idx: firstSnow},
+          {type: 'rain', idx: firstRain},
+          {type: 'drizzle', idx: firstDrizzle}
+        ].filter(t => t.idx !== -1).sort((a,b) => a.idx - b.idx);
+        const first = tuples[0];
+        const when = whenPhrase(first.idx);
+        let kind = first.type;
+        if (kind === 'drizzle') kind = 'light rain';
+        const verb = (first.idx <= 1) ? 'is likely' : 'is expected';
+        return `${capitalize(kind)} ${verb} ${when}.`;
+      }
+
+      // No precip in next six: use temp trend
+      if (Math.abs(deltaF) >= 4) {
+        if (deltaF > 0) return 'Temperatures will rise a bit over the next few hours.';
+        return 'Temperatures will ease down over the next few hours.';
+      }
+      return 'It should stay fairly steady and dry for a while.';
+    }
+
+    function capitalize(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
     function displayWeather(data) {
       const w = document.getElementById('weather');
@@ -118,30 +198,33 @@
       const desc = weatherDescriptions[code]?.desc || 'weather';
       const icon = weatherDescriptions[code]?.icon || '';
 
-      // Generate a more verbose summary
+      // Verbose but calm summary line for H1
       let summaryText = '';
-      if (tempF >= 85) summaryText = "It's warm and sunny out there";
-      else if (tempF >= 65) summaryText = "It's pleasantly mild";
+      if (tempF >= 90) summaryText = "It's hot out there";
+      else if (tempF >= 75) summaryText = "It's warm and bright";
+      else if (tempF >= 60) summaryText = "It's pleasantly mild";
+      else if (tempF >= 45) summaryText = "It's cool and comfortable";
       else summaryText = "It's chilly out there";
-      if (windMph >= 15) summaryText += ', and the wind is picking up';
+      if (windMph >= 18) summaryText += ', and the wind is picking up';
       summary.textContent = summaryText;
 
-      // Upcoming weather for next 6 hours
-      let upcoming = '';
+      // Build upcoming 6-hour single-sentence summary
+      let upcomingSentence = '';
       if (data.hourly && data.hourly.time && data.hourly.temperature_2m && data.hourly.weathercode) {
         const nowMs = Date.now();
         const idx = data.hourly.time.findIndex(t => new Date(t).getTime() > nowMs);
-        const endIdx = Math.min(idx + 6, data.hourly.time.length);
-        for (let i = idx; i < endIdx; i++) {
-          const hourTempF = Math.round(data.hourly.temperature_2m[i] * 9/5 + 32);
-          const hourCode = data.hourly.weathercode[i];
-          const hourDesc = weatherDescriptions[hourCode]?.desc || '';
-          const hourLabel = new Date(data.hourly.time[i]).getHours();
-          upcoming += `Around ${hourLabel}:00 it will be ${hourTempF}° and ${hourDesc}. `;
+        upcomingSentence = summarizeNextSix(data.hourly, idx);
+
+        // If currently precip but next is dry, phrase as tapering
+        const nowCat = categoryFor(code);
+        const nextCodes = data.hourly.weathercode.slice(idx, Math.min(idx+6, data.hourly.weathercode.length));
+        const nextHasPrecip = nextCodes.some(c => ['drizzle','rain','snow','storm'].includes(categoryFor(c)));
+        if (['drizzle','rain','snow','storm'].includes(nowCat) && !nextHasPrecip) {
+          upcomingSentence = 'Precipitation will taper off in the next couple of hours.';
         }
       }
 
-      w.innerHTML = `${icon} Right now it's ${tempF}° and ${desc}, with ${windMph} mph winds. ${upcoming}`;
+      w.innerHTML = `${icon} Right now it's ${tempF}° and ${desc}, with ${windMph} mph winds. ${upcomingSentence}`;
     }
 
     function fetchWeather(lat, lon) {
