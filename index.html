@@ -3,105 +3,133 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Weather Words</title>
-  <link rel="manifest" href="manifest.json">
+  <title>Weather Words — Ride</title>
   <link href="https://fonts.googleapis.com/css2?family=Quattrocento:wght@700&family=Questrial&display=swap" rel="stylesheet">
   <style>
-    body {
-      margin: 0;
-      padding: 10%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background: #dfeaf0;
-      color: #26364d;
-      text-align: center;
-      box-sizing: border-box;
-      position: relative;
+    :root{
+      --bg:#dfeaf0;         /* soft off‑white */
+      --fg:#26364d;         /* deep navy‑gray */
+      --accent:#20a2ee;     /* calm blue */
+      --accent2:#1ec278;    /* green for callouts */
     }
-    .container {
-      width: 100%;
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      padding:10%; /* keep the bookish margins */
+      height:100vh;
+      display:flex;align-items:center;justify-content:center;
+      background:var(--bg); color:var(--fg); text-align:center;
+      font-family:'Questrial', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      position:relative;
     }
-    h1 {
-      font-family: 'Quattrocento', serif;
-      font-size: 3.5rem;
-      margin-bottom: 1rem;
+    .container{width:100%;}
+
+    /* Top-right controls */
+    .controls{position:absolute; top:12px; right:12px; display:flex; gap:.5rem; align-items:center;}
+    .icon-btn{background:none;border:none;cursor:pointer;font-size:1.6rem;color:var(--accent)}
+    .mini{appearance:none; background:transparent; border:1px solid rgba(38,54,77,.25); color:var(--fg);
+          padding:.25rem .5rem; border-radius:6px; font-size:.95rem}
+
+    /* Headline + forecast text */
+    h1{font-family:'Quattrocento', serif; font-size:3.6rem; margin:.25rem 0 1rem}
+    #weather{font-size:4.6rem; line-height:1.15; word-wrap:break-word}
+    .advice{margin-top:1rem; font-size:1.25rem; opacity:.9}
+
+    /* Hidden manual location input */
+    #locationInputContainer{display:none; position:absolute; top:52px; right:12px; background:#ffffffd9; color:#111; padding:.75rem; border-radius:8px; box-shadow:0 6px 24px rgba(0,0,0,.12); width:min(80vw,320px); text-align:left}
+    #locationInputContainer input{width:100%; padding:.5rem .6rem; font-size:1rem; margin:.25rem 0 .5rem;}
+    #locationInputContainer button{background:var(--accent2); color:white; border:none; border-radius:6px; padding:.45rem .7rem; font-size:1rem; cursor:pointer}
+
+    .weather-icon{font-size:3rem; vertical-align:middle; margin-right:.4rem}
+
+    @media (max-width: 480px){
+      h1{font-size:2.6rem}
+      #weather{font-size:3rem}
     }
-    #weather {
-      font-family: 'Questrial', sans-serif;
-      font-size: 5rem;
-      line-height: 1.2;
-      word-wrap: break-word;
-    }
-    .location-btn {
-      background: none;
-      border: none;
-      font-size: 2rem;
-      cursor: pointer;
-      color: #20a2ee;
-      position: absolute;
-      top: 10px;
-      right: 10px;
-    }
-    #locationInputContainer {
-      display: none;
-      margin-top: 1rem;
-    }
-    input {
-      padding: 0.5rem;
-      width: 100%;
-      font-size: 1.5rem;
-      margin-top: 0.5rem;
-    }
-    button.submit-btn {
-      margin-top: 0.5rem;
-      padding: 0.5rem 1rem;
-      cursor: pointer;
-      background: #1ec278;
-      border: none;
-      border-radius: 4px;
-      font-size: 1.5rem;
-      color: #fff;
-    }
-    .weather-icon { font-size: 3rem; margin-right: 0.5rem; vertical-align: middle; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1 id="summary">Loading...</h1>
-    <div id="weather">Loading weather...</div>
+    <div class="controls">
+      <!-- rider heading + route type -->
+      <select id="headingSelect" class="mini" title="Outbound heading">
+        <option value="none">Heading</option>
+        <option value="0">N</option>
+        <option value="45">NE</option>
+        <option value="90">E</option>
+        <option value="135">SE</option>
+        <option value="180">S</option>
+        <option value="225">SW</option>
+        <option value="270">W</option>
+        <option value="315">NW</option>
+      </select>
+      <select id="routeType" class="mini" title="Route">
+        <option value="outback" selected>Out & Back</option>
+        <option value="loop">Loop</option>
+      </select>
+      <button class="icon-btn" onclick="toggleLocationInput()" title="Set location">📍</button>
+    </div>
 
-    <button class="location-btn" onclick="toggleLocationInput()">📍</button>
+    <h1 id="summary">Loading...</h1>
+    <div id="weather">Loading weather…</div>
+    <div id="advice" class="advice"></div>
+
     <div id="locationInputContainer">
-      <input id="locationInput" type="text" placeholder="City name" />
-      <button class="submit-btn" onclick="fetchWeatherByCity()">Get Weather</button>
+      <label for="locationInput" style="font-size:.9rem;opacity:.8">Enter a city</label>
+      <input id="locationInput" type="text" placeholder="e.g., Knoxville" />
+      <button onclick="fetchWeatherByCity()">Use this location</button>
     </div>
   </div>
 
   <script>
-    const weatherDescriptions = {
-      0: {desc: "clear sky", icon: "☀️"},
-      1: {desc: "mostly clear", icon: "🌤️"},
-      2: {desc: "partly cloudy", icon: "⛅"},
-      3: {desc: "overcast", icon: "☁️"},
-      45: {desc: "foggy", icon: "🌫️"},
-      48: {desc: "dense fog", icon: "🌫️"},
-      51: {desc: "light drizzle", icon: "🌦️"},
-      53: {desc: "drizzle", icon: "🌦️"},
-      55: {desc: "heavy drizzle", icon: "🌧️"},
-      61: {desc: "light rain", icon: "🌧️"},
-      63: {desc: "rain", icon: "🌧️"},
-      65: {desc: "heavy rain", icon: "⛈️"},
-      71: {desc: "light snow", icon: "🌨️"},
-      73: {desc: "snow", icon: "❄️"},
-      75: {desc: "heavy snow", icon: "❄️"},
-      95: {desc: "thunderstorms", icon: "⛈️"}
+    /* --- Condition map --- */
+    const WX = {
+      0:{desc:'clear sky', icon:'☀️'}, 1:{desc:'mostly clear', icon:'🌤️'}, 2:{desc:'partly cloudy', icon:'⛅'}, 3:{desc:'overcast', icon:'☁️'},
+      45:{desc:'foggy', icon:'🌫️'}, 48:{desc:'dense fog', icon:'🌫️'},
+      51:{desc:'light drizzle', icon:'🌦️'}, 53:{desc:'drizzle', icon:'🌦️'}, 55:{desc:'heavy drizzle', icon:'🌧️'},
+      61:{desc:'light rain', icon:'🌧️'}, 63:{desc:'rain', icon:'🌧️'}, 65:{desc:'heavy rain', icon:'⛈️'},
+      71:{desc:'light snow', icon:'🌨️'}, 73:{desc:'snow', icon:'❄️'}, 75:{desc:'heavy snow', icon:'❄️'},
+      95:{desc:'thunderstorms', icon:'⛈️'}
     };
+    const $ = s => document.querySelector(s);
 
-    // Helper: group weather code into a coarse category
-    function categoryFor(code) {
-      if (code == null) return 'other';
+    let lastData = null; // cache latest to recompute on heading change
+
+    function toggleLocationInput(){
+      const box = $('#locationInputContainer');
+      box.style.display = (box.style.display === 'block') ? 'none' : 'block';
+    }
+
+    function degDiff(a,b){
+      // minimal absolute angular difference 0..180
+      const d = Math.abs(((a - b + 540) % 360) - 180);
+      return d;
+    }
+
+    function bearingToText(b){
+      const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+      const idx = Math.round(b/45) % 8; return dirs[idx];
+    }
+
+    function relationship(windFromDeg, riderHeadingDeg){
+      if (riderHeadingDeg == null || isNaN(riderHeadingDeg)) return {kind:'wind', label:'wind'};
+      const diff = degDiff(windFromDeg, riderHeadingDeg);
+      if (diff <= 45) return {kind:'head', label:'headwind'};
+      if (diff >= 135) return {kind:'tail', label:'tailwind'};
+      return {kind:'cross', label:'crosswind'};
+    }
+
+    function mph(kmh){ return Math.round(kmh / 1.609); }
+    function fFromC(c){ return Math.round(c * 9/5 + 32); }
+
+    function periodLabel(hour){
+      if (hour>=5 && hour<=11) return 'this morning';
+      if (hour>=12 && hour<=16) return 'this afternoon';
+      if (hour>=17 && hour<=21) return 'this evening';
+      return 'overnight';
+    }
+
+    function categoryFor(code){
       if ([51,53,55].includes(code)) return 'drizzle';
       if ([61,63,65].includes(code)) return 'rain';
       if ([71,73,75].includes(code)) return 'snow';
@@ -111,161 +139,135 @@
       return 'other';
     }
 
-    // Helper: time-of-day phrasing
-    function periodLabel(hour) {
-      if (hour >= 5 && hour <= 11) return 'this morning';
-      if (hour >= 12 && hour <= 16) return 'this afternoon';
-      if (hour >= 17 && hour <= 21) return 'this evening';
-      return 'overnight';
-    }
-
-    function toggleLocationInput() {
-      const container = document.getElementById('locationInputContainer');
-      container.style.display = container.style.display === 'none' ? 'block' : 'none';
-    }
-
-    function summarizeNextSix(hourly, startIdx) {
-      const times = hourly.time;
-      const tempsC = hourly.temperature_2m;
-      const codes = hourly.weathercode;
-      if (!times || !tempsC || !codes) return '';
-
-      const endIdx = Math.min(startIdx + 6, times.length);
-      if (startIdx < 0 || startIdx >= endIdx) return '';
-
+    function summarizeNextSix(hourly, startIdx){
+      const times = hourly.time; const codes = hourly.weathercode; const temps = hourly.temperature_2m; const gusts = hourly.windgusts_10m;
+      if (!times || startIdx<0) return '';
+      const endIdx = Math.min(startIdx+6, times.length);
       const sliceCodes = codes.slice(startIdx, endIdx);
-      const sliceTempsC = tempsC.slice(startIdx, endIdx);
+      const sliceTemps = temps.slice(startIdx, endIdx);
+      const sliceGusts = (gusts||[]).slice(startIdx, endIdx);
       const firstHour = new Date(times[startIdx]).getHours();
 
-      // Detect first occurrence of precip category
-      const firstDrizzle = sliceCodes.findIndex(c => categoryFor(c) === 'drizzle');
-      const firstRain    = sliceCodes.findIndex(c => categoryFor(c) === 'rain');
-      const firstSnow    = sliceCodes.findIndex(c => categoryFor(c) === 'snow');
-      const firstStorm   = sliceCodes.findIndex(c => categoryFor(c) === 'storm');
-      const hasPrecip = [firstDrizzle, firstRain, firstSnow, firstStorm].some(i => i !== -1);
+      // Precip detection
+      const firstDrizzle = sliceCodes.findIndex(c=>categoryFor(c)==='drizzle');
+      const firstRain    = sliceCodes.findIndex(c=>categoryFor(c)==='rain');
+      const firstSnow    = sliceCodes.findIndex(c=>categoryFor(c)==='snow');
+      const firstStorm   = sliceCodes.findIndex(c=>categoryFor(c)==='storm');
+      const precipTuples = [
+        {t:'thunderstorms', i:firstStorm}, {t:'snow', i:firstSnow}, {t:'rain', i:firstRain}, {t:'light rain', i:firstDrizzle}
+      ].filter(x=>x.i!==-1).sort((a,b)=>a.i-b.i);
 
-      // Build temperature trend (°F)
-      const firstF = Math.round(sliceTempsC[0] * 9/5 + 32);
-      const lastF  = Math.round(sliceTempsC.slice(-1)[0] * 9/5 + 32);
-      const deltaF = lastF - firstF;
+      const firstF = fFromC(sliceTemps[0]);
+      const lastF  = fFromC(sliceTemps[sliceTemps.length-1]);
+      const delta  = lastF-firstF;
 
-      // Choose period phrase based on when precip starts
-      function whenPhrase(offset) {
-        if (offset <= 1) return 'soon';
-        const hr = (firstHour + offset) % 24;
-        return 'by ' + periodLabel(hr);
+      function whenPhrase(offset){ if (offset<=1) return 'soon'; const hr=(firstHour+offset)%24; return 'by '+periodLabel(hr); }
+
+      if (precipTuples.length){
+        const {t,i} = precipTuples[0];
+        const verb = (i<=1)?'is likely':'is expected';
+        return `${t.charAt(0).toUpperCase()+t.slice(1)} ${verb} ${whenPhrase(i)}.`;
       }
-
-      // Decide on summary sentence
-      if (hasPrecip) {
-        // pick the earliest precip type
-        const tuples = [
-          {type: 'thunderstorms', idx: firstStorm},
-          {type: 'snow', idx: firstSnow},
-          {type: 'rain', idx: firstRain},
-          {type: 'drizzle', idx: firstDrizzle}
-        ].filter(t => t.idx !== -1).sort((a,b) => a.idx - b.idx);
-        const first = tuples[0];
-        const when = whenPhrase(first.idx);
-        let kind = first.type;
-        if (kind === 'drizzle') kind = 'light rain';
-        const verb = (first.idx <= 1) ? 'is likely' : 'is expected';
-        return `${capitalize(kind)} ${verb} ${when}.`;
-      }
-
-      // No precip in next six: use temp trend
-      if (Math.abs(deltaF) >= 4) {
-        if (deltaF > 0) return 'Temperatures will rise a bit over the next few hours.';
-        return 'Temperatures will ease down over the next few hours.';
+      if (Math.abs(delta)>=4){ return (delta>0)?'Temperatures will climb a bit over the next few hours.':'Temperatures will ease down over the next few hours.'; }
+      // Gust trend
+      if (sliceGusts.length>=2){
+        const g0 = Math.round(sliceGusts[0]||0), g1 = Math.round(sliceGusts[sliceGusts.length-1]||0);
+        if (g1-g0 >= 5) return 'Gusts will strengthen a little in the next few hours.';
+        if (g0-g1 >= 5) return 'Gusts will ease a little over the next few hours.';
       }
       return 'It should stay fairly steady and dry for a while.';
     }
 
-    function capitalize(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
-
-    function displayWeather(data) {
-      const w = document.getElementById('weather');
-      const summary = document.getElementById('summary');
-      if (!data || !data.current_weather) {
-        w.textContent = 'Weather data not available.';
-        summary.textContent = '';
-        return;
-      }
-
-      const tempF = Math.round(data.current_weather.temperature * 9/5 + 32);
-      const windMph = Math.round(data.current_weather.windspeed / 1.609);
-      const code = data.current_weather.weathercode;
-      const desc = weatherDescriptions[code]?.desc || 'weather';
-      const icon = weatherDescriptions[code]?.icon || '';
-
-      // Verbose but calm summary line for H1
-      let summaryText = '';
-      if (tempF >= 90) summaryText = "It's hot out there";
-      else if (tempF >= 75) summaryText = "It's warm and bright";
-      else if (tempF >= 60) summaryText = "It's pleasantly mild";
-      else if (tempF >= 45) summaryText = "It's cool and comfortable";
-      else summaryText = "It's chilly out there";
-      if (windMph >= 18) summaryText += ', and the wind is picking up';
-      summary.textContent = summaryText;
-
-      // Build upcoming 6-hour single-sentence summary
-      let upcomingSentence = '';
-      if (data.hourly && data.hourly.time && data.hourly.temperature_2m && data.hourly.weathercode) {
-        const nowMs = Date.now();
-        const idx = data.hourly.time.findIndex(t => new Date(t).getTime() > nowMs);
-        upcomingSentence = summarizeNextSix(data.hourly, idx);
-
-        // If currently precip but next is dry, phrase as tapering
-        const nowCat = categoryFor(code);
-        const nextCodes = data.hourly.weathercode.slice(idx, Math.min(idx+6, data.hourly.weathercode.length));
-        const nextHasPrecip = nextCodes.some(c => ['drizzle','rain','snow','storm'].includes(categoryFor(c)));
-        if (['drizzle','rain','snow','storm'].includes(nowCat) && !nextHasPrecip) {
-          upcomingSentence = 'Precipitation will taper off in the next couple of hours.';
-        }
-      }
-
-      w.innerHTML = `${icon} Right now it's ${tempF}° and ${desc}, with ${windMph} mph winds. ${upcomingSentence}`;
+    function buildAdvice(nowF, feelF, windKind, windMph, nextPrecipLikely, uvHigh){
+      const items=[];
+      if (feelF<=50 || (nowF<58 && windMph>=10)) items.push('add a light layer');
+      if (nextPrecipLikely) items.push('pack a shell');
+      if (nowF>=85 || feelF>=88) items.push('bring extra water');
+      if (windKind==='cross' && windMph>=15) items.push('watch crosswind gusts');
+      return items.length? ('Advice: '+items.join(' · ')) : '';
     }
 
-    function fetchWeather(lat, lon) {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,weathercode`;
-      fetch(url)
-        .then(r => r.json())
-        .then(displayWeather)
-        .catch(() => {
-          document.getElementById('weather').textContent = 'Error fetching weather.';
-        });
+    function render(data){
+      const wEl = $('#weather'); const sEl = $('#summary'); const aEl = $('#advice');
+      if(!data || !data.current_weather){ sEl.textContent=''; wEl.textContent='Weather data not available.'; aEl.textContent=''; return; }
+
+      const tempF = fFromC(data.current_weather.temperature);
+      const windMph = mph(data.current_weather.windspeed);
+      const windFrom = data.current_weather.winddirection; // degrees FROM
+      const code = data.current_weather.weathercode; const meta = WX[code] || {desc:'weather', icon:''};
+
+      // Find current + next-hour index for hourly arrays
+      let idx = (data.hourly?.time||[]).findIndex(t => new Date(t).getTime() > Date.now());
+      if (idx===-1) idx = 0; const curIdx = Math.max(0, idx-1);
+      const feelF = fFromC((data.hourly?.apparent_temperature||[])[curIdx] ?? data.current_weather.temperature);
+      const gustNow = Math.round((data.hourly?.windgusts_10m||[])[curIdx] || windMph);
+
+      // Rider heading relationship
+      const headingVal = parseInt($('#headingSelect').value,10);
+      const rel = relationship(windFrom, isNaN(headingVal)? null : headingVal);
+
+      // Headline
+      let headline;
+      if (tempF >= 90) headline = "It's hot with a "+(rel.label);
+      else if (tempF >= 75) headline = "It's warm with a "+(rel.label);
+      else if (tempF >= 60) headline = "It's mild with a "+(rel.label);
+      else if (tempF >= 45) headline = "It's cool with a "+(rel.label);
+      else headline = "It's chilly with a "+(rel.label);
+      sEl.textContent = headline;
+
+      // Next-6h sentence
+      let nextSentence = '';
+      if (data.hourly && idx>=0){ nextSentence = summarizeNextSix(data.hourly, idx); }
+
+      // Precip likely soon flag for advice
+      let nextPrecipLikely = false;
+      if (data.hourly && idx>=0){
+        const codes = data.hourly.weathercode.slice(idx, Math.min(idx+6, data.hourly.weathercode.length));
+        nextPrecipLikely = codes.some(c => ['drizzle','rain','snow','storm'].includes(categoryFor(c)));
+      }
+
+      // Current sentence (cyclist-centered)
+      const windText = `${windMph} mph ${rel.label} from the ${bearingToText(windFrom)}` + (gustNow>windMph?`; gusts to ${gustNow}`:'');
+      const nowSentence = `${meta.icon?meta.icon+' ':''}Right now it's ${tempF}° (feels ${feelF}°) and ${meta.desc}, with ${windText}.`;
+
+      wEl.textContent = `${nowSentence} ${nextSentence}`.trim();
+
+      // Action line
+      aEl.textContent = buildAdvice(tempF, feelF, rel.kind, windMph, nextPrecipLikely, false);
+
+      lastData = data;
     }
 
-    function fetchWeatherByCity() {
-      const city = document.getElementById('locationInput').value.trim();
-      if (!city) return;
+    function fetchWeather(lat, lon){
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,apparent_temperature,weathercode,windgusts_10m`;
+      fetch(url).then(r=>r.json()).then(render).catch(()=>{
+        $('#weather').textContent='Error fetching weather.';
+      });
+    }
+
+    function fetchWeatherByCity(){
+      const city = $('#locationInput').value.trim(); if(!city) return;
       const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`;
-      fetch(geoUrl)
-        .then(r => r.json())
-        .then(data => {
-          if (data && data.results && data.results.length > 0) {
-            const loc = data.results[0];
-            fetchWeather(loc.latitude, loc.longitude);
-          } else {
-            document.getElementById('weather').textContent = 'Location not found.';
-          }
-        })
-        .catch(() => {
-          document.getElementById('weather').textContent = 'Error finding location.';
-        });
+      fetch(geoUrl).then(r=>r.json()).then(d=>{
+        if(d && d.results && d.results.length){ const loc=d.results[0]; fetchWeather(loc.latitude, loc.longitude); toggleLocationInput(); }
+        else { $('#weather').textContent='Location not found.'; }
+      }).catch(()=> $('#weather').textContent='Error finding location.');
     }
 
-    if (navigator.geolocation) {
+    // Geolocation on load
+    if(navigator.geolocation){
       navigator.geolocation.getCurrentPosition(
         pos => fetchWeather(pos.coords.latitude, pos.coords.longitude),
-        () => {
-          document.getElementById('weather').textContent = 'Location permission denied. Tap the pin to enter a city.';
-        }
+        () => { $('#weather').textContent='Location permission denied. Tap the pin to enter a city.'; }
       );
-    } else {
-      document.getElementById('weather').textContent = 'Geolocation not supported. Tap the pin to enter a city.';
-    }
+    } else { $('#weather').textContent='Geolocation not supported. Tap the pin to enter a city.'; }
+
+    // Recompute when rider changes heading/route
+    ['headingSelect','routeType'].forEach(id=>{
+      document.addEventListener('change', e=>{
+        if(e.target && e.target.id===id && lastData){ render(lastData); }
+      });
+    });
   </script>
 </body>
 </html>
