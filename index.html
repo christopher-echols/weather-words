@@ -3,9 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Weather Words — Ride</title>
+  <title>Ride Forecast</title>
   <link href="https://fonts.googleapis.com/css2?family=Quattrocento:wght@700&family=Questrial&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300,0..1,0" rel="stylesheet" />
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" content="#e9efef">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <style>
     :root{ --accent:#20a2ee; --accent2:#1ec278; }
     *{box-sizing:border-box}
@@ -522,6 +526,29 @@ function applyTheme(theme){
       if (e.target && e.target.id===id){ savePrefs(); if (lastData) render(lastData); }
     });
   });
+
+  // Register Service Worker (scoped to /weather-words/)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(console.error);
+  });
+}
+
+// Optional: gentle “Install” prompt support
+let _deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  _deferredPrompt = e;
+  // Example: show a tiny install hint in the advice area once per session
+  try {
+    if (!sessionStorage.getItem('ww_install_hint')) {
+      const el = document.getElementById('advice');
+      if (el) el.textContent += ' • Add to Home Screen to use offline.';
+      sessionStorage.setItem('ww_install_hint', '1');
+    }
+  } catch {}
+});
+// To programmatically trigger: _deferredPrompt?.prompt();
   </script>
 </body>
 </html>
