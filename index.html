@@ -126,15 +126,18 @@
       if (windMph >= 15) summaryText += ', and the wind is picking up';
       summary.textContent = summaryText;
 
-      // Include upcoming hours (next 6) for extra verbosity
+      // Upcoming weather for next 6 hours
       let upcoming = '';
       if (data.hourly && data.hourly.time && data.hourly.temperature_2m && data.hourly.weathercode) {
-        const currentHourIndex = data.hourly.time.findIndex(t => new Date(t).getTime() >= new Date().getTime());
-        for (let i = currentHourIndex; i < currentHourIndex + 6 && i < data.hourly.time.length; i++) {
+        const nowMs = Date.now();
+        const idx = data.hourly.time.findIndex(t => new Date(t).getTime() > nowMs);
+        const endIdx = Math.min(idx + 6, data.hourly.time.length);
+        for (let i = idx; i < endIdx; i++) {
           const hourTempF = Math.round(data.hourly.temperature_2m[i] * 9/5 + 32);
           const hourCode = data.hourly.weathercode[i];
           const hourDesc = weatherDescriptions[hourCode]?.desc || '';
-          upcoming += `In an hour, it will be ${hourTempF}° and ${hourDesc}. `;
+          const hourLabel = new Date(data.hourly.time[i]).getHours();
+          upcoming += `Around ${hourLabel}:00 it will be ${hourTempF}° and ${hourDesc}. `;
         }
       }
 
