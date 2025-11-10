@@ -19,7 +19,7 @@
     .controls:hover{opacity:1}.icon-btn{background:none;border:none;cursor:pointer;font-size:1.6rem;color:var(--accent)}
     .mini{appearance:none;background:transparent;border:1px solid rgba(38,54,77,.25);color:inherit;padding:.25rem .5rem;border-radius:6px;font-size:.95rem}
     .wx-icon{line-height:1;margin:0 auto .35rem}.icon-stack{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:.05rem}
-    .material-symbols-rounded{font-variation-settings:'FILL'0,'wght'300,'GRAD'0,'opsz'48;display:block;color:currentColor;}
+    .material-symbols-rounded{font-variation-settings:'FILL'0,'WGT'300,'GRAD'0,'opsz'48;display:block;color:currentColor;}
     .weather-symbol{font-size:clamp(2.8rem,6.5vw,4rem);line-height:1}.bike-symbol{font-size:clamp(3.5rem,7.5vw,5rem);line-height:1;transform:translateY(-3px)}
     h1{font-family:'Quattrocento',serif;font-weight:700;font-size:clamp(2.5rem,6vw,4rem);line-height:1.1;margin:.1rem 0 1rem;letter-spacing:-0.01em;transition:color 420ms ease;}
     #weather{font-family:'Questrial',sans-serif;font-weight:400;font-size:clamp(1.5rem,4vw,2.25rem);line-height:1.35;max-width:40ch;margin:0 auto 1.25rem;letter-spacing:0.01em;transition:color 420ms ease;}
@@ -58,261 +58,131 @@
   </div>
 
   <script>
-  /* ========= CORE WEATHER + VARIATION + GEO ========= */
-  const WX = {
-    0:{desc:'clear sky', icon:'wb_sunny'}, 1:{desc:'mostly clear', icon:'partly_cloudy_day'},
-    2:{desc:'partly cloudy', icon:'partly_cloudy_day'}, 3:{desc:'overcast', icon:'cloud'},
-    45:{desc:'foggy', icon:'foggy'}, 48:{desc:'dense fog', icon:'foggy'},
-    51:{desc:'light drizzle', icon:'rainy'}, 53:{desc:'drizzle', icon:'rainy'}, 55:{desc:'heavy drizzle', icon:'rainy'},
-    61:{desc:'light rain', icon:'rainy'}, 63:{desc:'rain', icon:'rainy'}, 65:{desc:'heavy rain', icon:'thunderstorm'},
-    71:{desc:'light snow', icon:'cloudy_snowing'}, 73:{desc:'snow', icon:'cloudy_snowing'}, 75:{desc:'heavy snow', icon:'cloudy_snowing'},
-    95:{desc:'thunderstorms', icon:'thunderstorm'}
-  };
+    /* ========= WEATHER ICON MAP ========= */
+    const WX = {
+      0:{desc:'clear sky', icon:'wb_sunny'}, 1:{desc:'mostly clear', icon:'partly_cloudy_day'},
+      2:{desc:'partly cloudy', icon:'partly_cloudy_day'}, 3:{desc:'overcast', icon:'cloud'},
+      45:{desc:'foggy', icon:'foggy'}, 48:{desc:'dense fog', icon:'foggy'},
+      51:{desc:'light drizzle', icon:'rainy'}, 53:{desc:'drizzle', icon:'rainy'}, 55:{desc:'heavy drizzle', icon:'rainy'},
+      61:{desc:'light rain', icon:'rainy'}, 63:{desc:'rain', icon:'rainy'}, 65:{desc:'heavy rain', icon:'thunderstorm'},
+      71:{desc:'light snow', icon:'cloudy_snowing'}, 73:{desc:'snow', icon:'cloudy_snowing'}, 75:{desc:'heavy snow', icon:'cloudy_snowing'},
+      95:{desc:'thunderstorms', icon:'thunderstorm'}
+    };
 
-  const $ = s => document.querySelector(s);
-  let lastData = null;
+    const $ = s => document.querySelector(s);
+    let lastData = null;
 
-  /* --- Variation helpers (deterministic, light) --- */
-  function seedFrom(...args){
-    const s = args.join('|'); let h = 2166136261>>>0;
-    for (let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h += (h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24); }
-    return h>>>0;
-  }
-  function pick(list, seed){ return list[ seed % list.length ]; }
-  function phraserCurrent(tempF, feelF, desc, windText, seed){
-    const openers = ["Right now it’s", "Currently it’s", "At the moment it’s", "Now it’s"];
-    const joins   = ["with", "and", "under", "as"];
-    const feels   = [`(feels ${feelF}°)`, `feels like ${feelF}°`, `wind chill ${feelF}°`, `apparent ${feelF}°`];
-    const opener = pick(openers, seed), join = pick(joins, seed>>2), feel = pick(feels, seed>>3);
-    return `${opener} ${tempF}° ${feel} and ${desc}, ${join} ${windText}.`;
-  }
-  function phraserNext(nextSentence, seed){
-    if (!nextSentence) return '';
-    const bridges = ["Looking ahead:", "Over the next few hours:", "Soon:", "Next up:"];
-    const bridge = pick(bridges, seed>>5);
-    return `${bridge} ${nextSentence}`;
-  }
+    /* ---------- VARIATION ENGINE ---------- */
+    function seedFrom(...args){ const s=args.join('|'); let h=2166136261>>>0; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h+=(h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24);} return h>>>0; }
+    function pick(list,seed){ return list[ seed % list.length ]; }
+    function phraserCurrent(tempF,feelF,desc,windText,seed){
+      const openers=["Right now it’s","Currently it’s","At the moment it’s","Now it’s"];
+      const joins=["with","and","under","as"];
+      const feels=[`(feels ${feelF}°)`,`feels like ${feelF}°`,`wind chill ${feelF}°`,`apparent ${feelF}°`];
+      const opener=pick(openers,seed), join=pick(joins,seed>>2), feel=pick(feels,seed>>3);
+      return `${opener} ${tempF}° ${feel} and ${desc}, ${join} ${windText}.`;
+    }
+    function phraserNext(nextSentence,seed){ if(!nextSentence) return ''; const bridges=["Looking ahead:","Over the next few hours:","Soon:","Next up:"]; const bridge=pick(bridges,seed>>5); return `${bridge} ${nextSentence}`; }
 
-  /* --- Location UI: ZIP (US) + City/State --- */
-  async function startGeocode(){
-    const q = $('#locationInput').value.trim();
-    if (!q) return;
-    const resultsEl = $('#geoResults');
-    resultsEl.innerHTML = 'Searching…';
-    try {
-      // ZIP (US) via Zippopotam.us
-      if (/^\d{5}$/.test(q)) {
-        const z = await fetch(`https://api.zippopotam.us/us/${q}`).then(r=>r.ok?r.json():Promise.reject());
-        const place = z.places && z.places[0];
-        if (place) {
-          const lat = parseFloat(place.latitude), lon = parseFloat(place.longitude);
-          resultsEl.innerHTML =
-            `<div class="geo-item" data-lat="${lat}" data-lon="${lon}">${place["place name"]}, ${place["state abbreviation"]} ${q}</div>`;
-          bindGeoPicks(); return;
+    /* ---------- GEO: ZIP (US) + City/State ---------- */
+    async function startGeocode(){
+      const q=$('#locationInput').value.trim(); if(!q) return; const resultsEl=$('#geoResults'); resultsEl.innerHTML='Searching…';
+      try{
+        if(/^\d{5}$/.test(q)){
+          const z=await fetch(`https://api.zippopotam.us/us/${q}`).then(r=>r.ok?r.json():Promise.reject());
+          const place=z.places && z.places[0];
+          if(place){ const lat=parseFloat(place.latitude), lon=parseFloat(place.longitude);
+            resultsEl.innerHTML=`<div class="geo-item" data-lat="${lat}" data-lon="${lon}">${place["place name"]}, ${place["state abbreviation"]} ${q}</div>`; bindGeoPicks(); return; }
         }
-      }
-      // City or City, ST via Open-Meteo Geocoding
-      const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=en&format=json`;
-      const g = await fetch(url).then(r=>r.json());
-      if (g && g.results && g.results.length) {
-        resultsEl.innerHTML = g.results.map(r=>{
-          const label = [r.name, r.admin1, r.country_code].filter(Boolean).join(', ');
-          return `<div class="geo-item" data-lat="${r.latitude}" data-lon="${r.longitude}">${label}</div>`;
-        }).join('');
-        bindGeoPicks();
-      } else {
-        resultsEl.textContent = 'No matches. Try a ZIP or add the state abbreviation.';
-      }
-    } catch {
-      resultsEl.textContent = 'Error finding location.';
+        const url=`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=en&format=json`;
+        const g=await fetch(url).then(r=>r.json());
+        if(g && g.results && g.results.length){
+          resultsEl.innerHTML=g.results.map(r=>{
+            const label=[r.name, r.admin1, r.country_code].filter(Boolean).join(', ');
+            return `<div class="geo-item" data-lat="${r.latitude}" data-lon="${r.longitude}">${label}</div>`;
+          }).join('');
+          bindGeoPicks();
+        } else { resultsEl.textContent='No matches. Try a ZIP or add the state abbreviation.'; }
+      } catch{ resultsEl.textContent='Error finding location.'; }
     }
-  }
-  function bindGeoPicks(){
-    document.querySelectorAll('.geo-item').forEach(el=>{
-      el.addEventListener('click', ()=>{
-        const lat = parseFloat(el.getAttribute('data-lat'));
-        const lon = parseFloat(el.getAttribute('data-lon'));
-        fetchWeather(lat, lon);
-        toggleLocationInput();
-      });
-    });
-  }
-  function toggleLocationInput(){
-    const box = $('#locationInputContainer');
-    box.style.display = (box.style.display === 'block') ? 'none' : 'block';
-  }
+    function bindGeoPicks(){ document.querySelectorAll('.geo-item').forEach(el=>{ el.addEventListener('click',()=>{ const lat=parseFloat(el.getAttribute('data-lat')); const lon=parseFloat(el.getAttribute('data-lon')); fetchWeather(lat,lon); toggleLocationInput(); }); }); }
+    function toggleLocationInput(){ const box=$('#locationInputContainer'); box.style.display=(box.style.display==='block')?'none':'block'; }
 
-  /* --- Wind + units --- */
-  function degDiff(a,b){ return Math.abs(((a - b + 540) % 360) - 180); }
-  function bearingToText(b){ const d = ['N','NE','E','SE','S','SW','W','NW']; return d[Math.round(b/45) % 8]; }
-  function relationship(wFromDeg, rHeading){
-    if (rHeading == null || isNaN(rHeading)) return {kind:'wind', label:'wind'};
-    const diff = degDiff(wFromDeg, rHeading);
-    if (diff <= 45) return {kind:'head', label:'headwind'};
-    if (diff >= 135) return {kind:'tail', label:'tailwind'};
-    return {kind:'cross', label:'crosswind'};
-  }
-  function mph(kmh){ return Math.round(kmh / 1.609); }
-  function fFromC(c){ return Math.round(c * 9/5 + 32); }
+    /* ---------- WIND/UNITS HELPERS ---------- */
+    function degDiff(a,b){ return Math.abs(((a-b+540)%360)-180); }
+    function bearingToText(b){ const d=['N','NE','E','SE','S','SW','W','NW']; return d[Math.round(b/45)%8]; }
+    function relationship(wFromDeg,rHeading){ if(rHeading==null||isNaN(rHeading)) return {kind:'wind', label:'wind'}; const diff=degDiff(wFromDeg,rHeading); if(diff<=45) return {kind:'head',label:'headwind'}; if(diff>=135) return {kind:'tail',label:'tailwind'}; return {kind:'cross',label:'crosswind'}; }
+    function mph(kmh){ return Math.round(kmh/1.609); }
+    function fFromC(c){ return Math.round(c*9/5 + 32); }
 
-  /* --- Copy/theming helpers --- */
-  function periodLabel(h){ if (h>=5&&h<=11) return 'this morning'; if (h>=12&&h<=16) return 'this afternoon'; if (h>=17&&h<=21) return 'this evening'; return 'overnight'; }
-  function categoryFor(code){
-    if ([51,53,55].includes(code)) return 'drizzle';
-    if ([61,63,65].includes(code)) return 'rain';
-    if ([71,73,75].includes(code)) return 'snow';
-    if ([95].includes(code)) return 'storm';
-    if ([45,48].includes(code)) return 'fog';
-    if ([0,1,2,3].includes(code)) return 'dry';
-    return 'other';
-  }
-  function summarizeNextSix(hourly, startIdx){
-    const times = hourly.time, codes = hourly.weathercode, temps = hourly.temperature_2m, gusts = hourly.windgusts_10m;
-    if (!times || startIdx < 0) return '';
-    const endIdx = Math.min(startIdx+6, times.length);
-    const sliceCodes = codes.slice(startIdx, endIdx);
-    const sliceTemps = temps.slice(startIdx, endIdx);
-    const sliceGusts = (gusts||[]).slice(startIdx, endIdx);
-    const firstHour = new Date(times[startIdx]).getHours();
-
-    const firstDrizzle = sliceCodes.findIndex(c=>categoryFor(c)==='drizzle');
-    const firstRain    = sliceCodes.findIndex(c=>categoryFor(c)==='rain');
-    const firstSnow    = sliceCodes.findIndex(c=>categoryFor(c)==='snow');
-    const firstStorm   = sliceCodes.findIndex(c=>categoryFor(c)==='storm');
-    const precip = [
-      {t:'thunderstorms', i:firstStorm}, {t:'snow', i:firstSnow}, {t:'rain', i:firstRain}, {t:'light rain', i:firstDrizzle}
-    ].filter(x=>x.i!==-1).sort((a,b)=>a.i-b.i);
-
-    const firstF = fFromC(sliceTemps[0]);
-    const lastF  = fFromC(sliceTemps[sliceTemps.length-1]);
-    const delta  = lastF - firstF;
-
-    function whenPhrase(o){ if (o<=1) return 'soon'; const hr=(firstHour+o)%24; return 'by '+periodLabel(hr); }
-
-    if (precip.length){
-      const {t,i} = precip[0];
-      const verb = (i<=1)?'is likely':'is expected';
-      return `${t.charAt(0).toUpperCase()+t.slice(1)} ${verb} ${whenPhrase(i)}.`;
+    /* ---------- COPY/THEME HELPERS ---------- */
+    function periodLabel(h){ if(h>=5&&h<=11) return 'this morning'; if(h>=12&&h<=16) return 'this afternoon'; if(h>=17&&h<=21) return 'this evening'; return 'overnight'; }
+    function categoryFor(code){ if([51,53,55].includes(code)) return 'drizzle'; if([61,63,65].includes(code)) return 'rain'; if([71,73,75].includes(code)) return 'snow'; if([95].includes(code)) return 'storm'; if([45,48].includes(code)) return 'fog'; if([0,1,2,3].includes(code)) return 'dry'; return 'other'; }
+    function summarizeNextSix(hourly,startIdx){
+      const times=hourly.time, codes=hourly.weathercode, temps=hourly.temperature_2m, gusts=hourly.windgusts_10m;
+      if(!times || startIdx<0) return '';
+      const endIdx=Math.min(startIdx+6, times.length);
+      const sliceCodes=codes.slice(startIdx,endIdx);
+      const sliceTemps=temps.slice(startIdx,endIdx);
+      const sliceGusts=(gusts||[]).slice(startIdx,endIdx);
+      const firstHour=new Date(times[startIdx]).getHours();
+      const firstDrizzle=sliceCodes.findIndex(c=>categoryFor(c)==='drizzle');
+      const firstRain=sliceCodes.findIndex(c=>categoryFor(c)==='rain');
+      const firstSnow=sliceCodes.findIndex(c=>categoryFor(c)==='snow');
+      const firstStorm=sliceCodes.findIndex(c=>categoryFor(c)==='storm');
+      const precip=[{t:'thunderstorms',i:firstStorm},{t:'snow',i:firstSnow},{t:'rain',i:firstRain},{t:'light rain',i:firstDrizzle}].filter(x=>x.i!==-1).sort((a,b)=>a.i-b.i);
+      const firstF=fFromC(sliceTemps[0]); const lastF=fFromC(sliceTemps[sliceTemps.length-1]); const delta=lastF-firstF;
+      function whenPhrase(o){ if(o<=1) return 'soon'; const hr=(firstHour+o)%24; return 'by '+periodLabel(hr); }
+      if(precip.length){ const {t,i}=precip[0]; const verb=(i<=1)?'is likely':'is expected'; return `${t.charAt(0).toUpperCase()+t.slice(1)} ${verb} ${whenPhrase(i)}.`; }
+      if(Math.abs(delta)>=4) return (delta>0)?'Temperatures will climb a bit over the next few hours.':'Temperatures will ease down over the next few hours.';
+      if(sliceGusts.length>=2){ const g0=Math.round(sliceGusts[0]||0), g1=Math.round(sliceGusts[sliceGusts.length-1]||0); if(g1-g0>=5) return 'Gusts will strengthen a little in the next few hours.'; if(g0-g1>=5) return 'Gusts will ease a little over the next few hours.'; }
+      return 'It should stay fairly steady and dry for a while.';
     }
-    if (Math.abs(delta) >= 4) return (delta>0) ? 'Temperatures will climb a bit over the next few hours.' : 'Temperatures will ease down over the next few hours.';
-    if (sliceGusts.length >= 2){
-      const g0 = Math.round(sliceGusts[0]||0), g1 = Math.round(sliceGusts[sliceTemps.length-1]||0);
-      if (g1-g0 >= 5) return 'Gusts will strengthen a little in the next few hours.';
-      if (g0-g1 >= 5) return 'Gusts will ease a little over the next few hours.';
+    function routeHint(kind,routeType){ if(routeType!=='outback') return ''; if(kind==='head') return ' Tailwind on the way back.'; if(kind==='tail') return ' Headwind on the return.'; if(kind==='cross') return ' Crosswind both ways.'; return ''; }
+    function adviceSentence(nowF,feelF,windKind,windMph,nextPrecipLikely){ const parts=[]; if(nextPrecipLikely) parts.push('Pack a light shell'); if(feelF<=50||(nowF<58&&windMph>=10)) parts.push('An extra light layer will keep you warm enough'); if(nowF>=85||feelF>=88) parts.push('Bring extra water and a pinch of electrolytes'); if(windKind==='cross'&&windMph>=15) parts.push('Watch for crosswind gusts on open sections'); return parts.length? parts.join('. ')+'.' : 'Wear whatever’s comfortable — standard kit is perfect today.'; }
+    function chooseTheme(tempF,code){ const cat=categoryFor(code); if(cat==='snow') return 'theme-snow'; if(['rain','drizzle','storm'].includes(cat)) return 'theme-rain'; if(tempF>=80) return 'theme-warm'; if(tempF<=50) return 'theme-cool'; return 'theme-neutral'; }
+    function applyTheme(theme){ ['theme-neutral','theme-cool','theme-warm','theme-rain','theme-snow'].forEach(c=>document.body.classList.remove(c)); document.body.classList.add(theme); }
+
+    /* ---------- RENDER + FETCH ---------- */
+    function render(data){
+      const wEl=$('#weather'), sEl=$('#summary'), aEl=$('#advice'), iEl=$('#wxIcon');
+      if(!data || !data.current_weather){ sEl.textContent=''; wEl.textContent='Weather data not available.'; aEl.textContent=''; iEl.textContent=''; return; }
+      const tempF=fFromC(data.current_weather.temperature);
+      const windMph=mph(data.current_weather.windspeed);
+      const windFrom=data.current_weather.winddirection;
+      const code=data.current_weather.weathercode;
+      const meta=WX[code] || {desc:'conditions', icon:'wb_sunny'};
+      applyTheme(chooseTheme(tempF, code));
+      let idx=(data.hourly?.time||[]).findIndex(t=> new Date(t).getTime()>Date.now()); if(idx===-1) idx=0; const curIdx=Math.max(0, idx-1);
+      const feelF=fFromC((data.hourly?.apparent_temperature||[])[curIdx] ?? data.current_weather.temperature);
+      const gustNow=Math.round((data.hourly?.windgusts_10m||[])[curIdx] || windMph);
+      const headingVal=parseInt($('#headingSelect').value,10);
+      const rel=relationship(windFrom, isNaN(headingVal)? null : headingVal);
+      // icons
+      iEl.innerHTML=`<div class="icon-stack" aria-hidden="true"><span class="material-symbols-rounded weather-symbol">${meta.icon}</span><span class="material-symbols-rounded bike-symbol">directions_bike</span></div>`;
+      // headline
+      let headline; if(tempF>=90) headline="It’s hot with a "+rel.label; else if(tempF>=75) headline="It’s warm with a "+rel.label; else if(tempF>=60) headline="It’s mild with a "+rel.label; else if(tempF>=45) headline="It’s cool with a "+rel.label; else headline="It’s chilly with a "+rel.label; sEl.textContent=headline;
+      // next‑6h
+      let nextSentence=''; if(data.hourly && idx>=0){ nextSentence=summarizeNextSix(data.hourly, idx); }
+      let nextPrecipLikely=false; if(data.hourly && idx>=0){ const codes=data.hourly.weathercode.slice(idx, Math.min(idx+6, data.hourly.weathercode.length)); nextPrecipLikely=codes.some(c=> ['drizzle','rain','snow','storm'].includes(categoryFor(c))); }
+      const route=$('#routeType').value;
+      const windText=`${windMph} mph ${rel.label} from the ${bearingToText(windFrom)}` + (gustNow>windMph?`; gusts to ${gustNow}`:'');
+      const hint=routeHint(rel.kind, route);
+      const seed=seedFrom(new Date().toISOString().slice(0,13), tempF, feelF, windMph, windFrom);
+      const nowSentence=phraserCurrent(tempF, feelF, meta.desc, windText, seed) + (hint?` ${hint}`:'');
+      const nextLine=phraserNext(nextSentence, seed);
+      wEl.textContent=`${nowSentence} ${nextLine}`.trim();
+      aEl.textContent=adviceSentence(tempF, feelF, rel.kind, windMph, nextPrecipLikely);
+      lastData=data;
     }
-    return 'It should stay fairly steady and dry for a while.';
-  }
-  function routeHint(kind, routeType){
-    if (routeType!=='outback') return '';
-    if (kind==='head') return ' Tailwind on the way back.';
-    if (kind==='tail') return ' Headwind on the return.';
-    if (kind==='cross') return ' Crosswind both ways.';
-    return '';
-  }
-  function adviceSentence(nowF, feelF, windKind, windMph, nextPrecipLikely){
-    const parts=[];
-    if (nextPrecipLikely) parts.push('Pack a light shell');
-    if (feelF<=50 || (nowF<58 && windMph>=10)) parts.push('An extra light layer will keep you warm enough');
-    if (nowF>=85 || feelF>=88) parts.push('Bring extra water and a pinch of electrolytes');
-    if (windKind==='cross' && windMph>=15) parts.push('Watch for crosswind gusts on open sections');
-    return parts.length ? parts.join('. ') + '.' : 'Wear whatever’s comfortable — standard kit is perfect today.';
-  }
-  function chooseTheme(tempF, code){
-    const cat = categoryFor(code);
-    if (cat==='snow') return 'theme-snow';
-    if (['rain','drizzle','storm'].includes(cat)) return 'theme-rain';
-    if (tempF >= 80) return 'theme-warm';
-    if (tempF <= 50) return 'theme-cool';
-    return 'theme-neutral';
-  }
-  function applyTheme(theme){
-    ['theme-neutral','theme-cool','theme-warm','theme-rain','theme-snow'].forEach(c=>document.body.classList.remove(c));
-    document.body.classList.add(theme);
-  }
+    function fetchWeather(lat,lon){ const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,apparent_temperature,weathercode,windgusts_10m`; fetch(url).then(r=>r.json()).then(render).catch(()=>{ $('#weather').textContent='Error fetching weather.'; }); }
 
-  /* --- Render + Fetch --- */
-  function render(data){
-    const wEl = $('#weather'), sEl = $('#summary'), aEl = $('#advice'), iEl = $('#wxIcon');
-    if (!data || !data.current_weather){ sEl.textContent=''; wEl.textContent='Weather data not available.'; aEl.textContent=''; iEl.textContent=''; return; }
+    // Geolocation on load
+    if(navigator.geolocation){ navigator.geolocation.getCurrentPosition(p=> fetchWeather(p.coords.latitude, p.coords.longitude), ()=>{ $('#weather').textContent='Location permission denied. Tap the pin to enter a city.'; }); }
+    else { $('#weather').textContent='Geolocation not supported. Tap the pin to enter a city.'; }
 
-    const tempF   = fFromC(data.current_weather.temperature);
-    const windMph = mph(data.current_weather.windspeed);
-    const windFrom= data.current_weather.winddirection;
-    const code    = data.current_weather.weathercode;
-    const meta    = WX[code] || {desc:'weather', icon:'wb_sunny'};
-
-    applyTheme(chooseTheme(tempF, code));
-
-    let idx = (data.hourly?.time||[]).findIndex(t => new Date(t).getTime() > Date.now());
-    if (idx===-1) idx = 0;
-    const curIdx = Math.max(0, idx-1);
-    const feelF  = fFromC((data.hourly?.apparent_temperature||[])[curIdx] ?? data.current_weather.temperature);
-    const gustNow= Math.round((data.hourly?.windgusts_10m||[])[curIdx] || windMph);
-
-    const headingVal = parseInt($('#headingSelect').value,10);
-    const rel = relationship(windFrom, isNaN(headingVal) ? null : headingVal);
-
-    // icons
-    iEl.innerHTML =
-      `<div class="icon-stack" aria-hidden="true">
-         <span class="material-symbols-rounded weather-symbol">${meta.icon}</span>
-         <span class="material-symbols-rounded bike-symbol">directions_bike</span>
-       </div>`;
-
-    // headline
-    let headline;
-    if      (tempF >= 90) headline = "It’s hot with a "  + rel.label;
-    else if (tempF >= 75) headline = "It’s warm with a " + rel.label;
-    else if (tempF >= 60) headline = "It’s mild with a " + rel.label;
-    else if (tempF >= 45) headline = "It’s cool with a " + rel.label;
-    else                  headline = "It’s chilly with a " + rel.label;
-    sEl.textContent = headline;
-
-    // next-6h + advice
-    let nextSentence = '';
-    if (data.hourly && idx>=0) nextSentence = summarizeNextSix(data.hourly, idx);
-
-    let nextPrecipLikely = false;
-    if (data.hourly && idx>=0){
-      const codes = data.hourly.weathercode.slice(idx, Math.min(idx+6, data.hourly.weathercode.length));
-      nextPrecipLikely = codes.some(c => ['drizzle','rain','snow','storm'].includes(categoryFor(c)));
-    }
-
-    const route = $('#routeType').value;
-    const windText = `${windMph} mph ${rel.label} from the ${bearingToText(windFrom)}` + (gustNow>windMph?`; gusts to ${gustNow}`:'');
-    const hint = routeHint(rel.kind, route);
-
-    const seed = seedFrom(new Date().toISOString().slice(0,13), tempF, feelF, windMph, windFrom);
-    const nowSentence = phraserCurrent(tempF, feelF, meta.desc, windText, seed) + (hint ? ` ${hint}` : '');
-    const nextLine = phraserNext(nextSentence, seed);
-
-    wEl.textContent = `${nowSentence} ${nextLine}`.trim();
-    aEl.textContent = adviceSentence(tempF, feelF, rel.kind, windMph, nextPrecipLikely);
-
-    lastData = data;
-  }
-
-  function fetchWeather(lat, lon){
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,apparent_temperature,weathercode,windgusts_10m`;
-    fetch(url).then(r=>r.json()).then(render).catch(()=>{ $('#weather').textContent='Error fetching weather.'; });
-  }
-
-  // Geolocation on load
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      p => fetchWeather(p.coords.latitude, p.coords.longitude),
-      () => { $('#weather').textContent='Location permission denied. Tap the pin to enter a city.'; }
-    );
-  } else {
-    $('#weather').textContent='Geolocation not supported. Tap the pin to enter a city.';
-  }
-
-  // Re-render on control changes
-  ['headingSelect','routeType'].forEach(id=>{
-    document.addEventListener('change', e=>{
-      if (e.target && e.target.id===id && lastData) render(lastData);
-    });
-  });
-</script>
+    // Re-render on control changes
+    ['headingSelect','routeType'].forEach(id=>{ document.addEventListener('change', e=>{ if(e.target && e.target.id===id && lastData){ render(lastData); } }); });
+  </script>
 </body>
 </html>
