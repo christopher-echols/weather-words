@@ -21,12 +21,11 @@
       display:flex; align-items:center; justify-content:center;
       background:var(--bg); color:var(--fg); text-align:center;
       font-family:'Questrial', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      position:relative;
     }
-    .container{width:100%; animation:fadeIn 320ms ease-out both}
+    .container{width:100%; animation:fadeIn 320ms ease-out both; position:relative}
 
-    /* Top-right controls */
-    .controls{position:absolute; top:12px; right:12px; display:flex; gap:.5rem; align-items:center; opacity:.8}
+    /* Controls separated and fixed in the corner */
+    .controls{position:fixed; top:12px; right:12px; display:flex; gap:.5rem; align-items:center; opacity:.85; z-index:10}
     .controls:hover{opacity:1}
     .icon-btn{background:none;border:none;cursor:pointer;font-size:1.6rem;color:var(--accent)}
     .mini{appearance:none; background:transparent; border:1px solid rgba(38,54,77,.25); color:var(--fg);
@@ -45,13 +44,13 @@
       letter-spacing:0.01em;
     }
     #advice{
-      font-family:'Questrial', sans-serif; font-weight:500;
-      font-size:clamp(1.1rem, 2.5vw, 1.5rem); line-height:1.4;
-      color:var(--advice); margin-top:.75rem; letter-spacing:0.01em;
+      font-family:'Quattrocento', serif; font-weight:700; /* match H1 font */
+      font-size:clamp(1.1rem, 2.5vw, 1.5rem); line-height:1.35;
+      color:var(--advice); margin-top:.75rem; letter-spacing:-0.005em;
     }
 
-    /* Manual location popover */
-    #locationInputContainer{display:none; position:absolute; top:52px; right:12px; background:#ffffffd9; color:#111; padding:.75rem; border-radius:8px; box-shadow:0 6px 24px rgba(0,0,0,.12); width:min(80vw,320px); text-align:left}
+    /* Manual location popover separated from layout */
+    #locationInputContainer{display:none; position:fixed; top:52px; right:12px; background:#ffffffd9; color:#111; padding:.75rem; border-radius:8px; box-shadow:0 6px 24px rgba(0,0,0,.12); width:min(80vw,320px); text-align:left; z-index:11}
     #locationInputContainer input{width:100%; padding:.5rem .6rem; font-size:1rem; margin:.25rem 0 .5rem;}
     #locationInputContainer button{background:var(--accent2); color:white; border:none; border-radius:6px; padding:.45rem .7rem; font-size:1rem; cursor:pointer}
 
@@ -66,35 +65,37 @@
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="controls">
-      <select id="headingSelect" class="mini" title="Outbound heading">
-        <option value="none">Heading</option>
-        <option value="0">N</option>
-        <option value="45">NE</option>
-        <option value="90">E</option>
-        <option value="135">SE</option>
-        <option value="180">S</option>
-        <option value="225">SW</option>
-        <option value="270">W</option>
-        <option value="315">NW</option>
-      </select>
-      <select id="routeType" class="mini" title="Route">
-        <option value="outback" selected>Out & Back</option>
-        <option value="loop">Loop</option>
-      </select>
-      <button class="icon-btn" onclick="toggleLocationInput()" title="Set location">📍</button>
-    </div>
+  <!-- Fixed controls in the upper right -->
+  <div class="controls">
+    <select id="headingSelect" class="mini" title="Outbound heading">
+      <option value="none">Heading</option>
+      <option value="0">N</option>
+      <option value="45">NE</option>
+      <option value="90">E</option>
+      <option value="135">SE</option>
+      <option value="180">S</option>
+      <option value="225">SW</option>
+      <option value="270">W</option>
+      <option value="315">NW</option>
+    </select>
+    <select id="routeType" class="mini" title="Route">
+      <option value="outback" selected>Out & Back</option>
+      <option value="loop">Loop</option>
+    </select>
+    <button class="icon-btn" onclick="toggleLocationInput()" title="Set location">📍</button>
+  </div>
 
+  <div class="container">
     <h1 id="summary">Loading...</h1>
     <div id="weather">Loading weather…</div>
     <div id="advice" class="advice"></div>
+  </div>
 
-    <div id="locationInputContainer">
-      <label for="locationInput" style="font-size:.9rem;opacity:.8">Enter a city</label>
-      <input id="locationInput" type="text" placeholder="e.g., Knoxville" />
-      <button onclick="fetchWeatherByCity()">Use this location</button>
-    </div>
+  <!-- Detached manual location popover -->
+  <div id="locationInputContainer">
+    <label for="locationInput" style="font-size:.9rem;opacity:.8">Enter a city</label>
+    <input id="locationInput" type="text" placeholder="e.g., Knoxville" />
+    <button onclick="fetchWeatherByCity()">Use this location</button>
   </div>
 
   <script>
@@ -191,13 +192,13 @@
       return 'It should stay fairly steady and dry for a while.';
     }
 
-    function buildAdvice(nowF, feelF, windKind, windMph, nextPrecipLikely, uvHigh){
-      const items=[];
-      if (feelF<=50 || (nowF<58 && windMph>=10)) items.push('add a light layer');
-      if (nextPrecipLikely) items.push('pack a shell');
-      if (nowF>=85 || feelF>=88) items.push('bring extra water');
-      if (windKind==='cross' && windMph>=15) items.push('watch crosswind gusts');
-      return items.length? ('Advice: '+items.join(' · ')) : '';
+    function adviceSentence(nowF, feelF, windKind, windMph, nextPrecipLikely){
+      const parts=[];
+      if (nextPrecipLikely) parts.push('Pack a light shell');
+      if (feelF<=50 || (nowF<58 && windMph>=10)) parts.push('An extra light layer will keep you warm enough');
+      if (nowF>=85 || feelF>=88) parts.push('Bring extra water and a pinch of electrolytes');
+      if (windKind==='cross' && windMph>=15) parts.push('Watch for crosswind gusts on open sections');
+      return parts.length? parts.join('. ') + '.' : '';
     }
 
     function render(data){
@@ -217,13 +218,14 @@
       const headingVal = parseInt($('#headingSelect').value,10);
       const rel = relationship(windFrom, isNaN(headingVal)? null : headingVal);
 
+      // Headline with icon moved here
       let headline;
       if (tempF >= 90) headline = "It's hot with a "+(rel.label);
       else if (tempF >= 75) headline = "It's warm with a "+(rel.label);
       else if (tempF >= 60) headline = "It's mild with a "+(rel.label);
       else if (tempF >= 45) headline = "It's cool with a "+(rel.label);
       else headline = "It's chilly with a "+(rel.label);
-      sEl.textContent = headline;
+      sEl.innerHTML = `${meta.icon?meta.icon+' ':''}${headline}`;
 
       let nextSentence = '';
       if (data.hourly && idx>=0){ nextSentence = summarizeNextSix(data.hourly, idx); }
@@ -235,10 +237,10 @@
       }
 
       const windText = `${windMph} mph ${rel.label} from the ${bearingToText(windFrom)}` + (gustNow>windMph?`; gusts to ${gustNow}`:'');
-      const nowSentence = `${meta.icon?meta.icon+' ':''}Right now it's ${tempF}° (feels ${feelF}°) and ${meta.desc}, with ${windText}.`;
+      const nowSentence = `Right now it's ${tempF}° (feels ${feelF}°) and ${meta.desc}, with ${windText}.`;
 
       wEl.textContent = `${nowSentence} ${nextSentence}`.trim();
-      aEl.textContent = buildAdvice(tempF, feelF, rel.kind, windMph, nextPrecipLikely, false);
+      aEl.textContent = adviceSentence(tempF, feelF, rel.kind, windMph, nextPrecipLikely);
 
       lastData = data;
     }
