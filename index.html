@@ -210,6 +210,22 @@
   function fFromC(c){ return Math.round(c * 9/5 + 32); }
 
   /* --- Copy/theming helpers --- */
+  /* === Theming helpers (required by render) === */
+function chooseTheme(tempF, code){
+  // reuse your categoryFor() mapping
+  const cat = categoryFor(code);
+  if (cat==='snow') return 'theme-snow';
+  if (cat==='rain' || cat==='drizzle' || cat==='storm') return 'theme-rain';
+  if (Number.isFinite(tempF) && tempF >= 80) return 'theme-warm';
+  if (Number.isFinite(tempF) && tempF <= 50) return 'theme-cool';
+  return 'theme-neutral';
+}
+
+function applyTheme(theme){
+  document.body.classList.remove('theme-neutral','theme-cool','theme-warm','theme-rain','theme-snow');
+  document.body.classList.add(theme);
+}
+    
   function periodLabel(h){
     if (h>=5&&h<=11) return 'this morning';
     if (h>=12&&h<=16) return 'this afternoon';
