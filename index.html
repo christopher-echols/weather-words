@@ -8,8 +8,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300,0..1,0" rel="stylesheet" />
   <style>
     :root{
-      --accent:#20a2ee;     /* calm blue */
-      --accent2:#1ec278;    /* green for callouts */
+      --accent:#20a2ee;
+      --accent2:#1ec278;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -21,8 +21,7 @@
       font-family:'Questrial', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       transition: background-color 420ms ease, color 420ms ease;
     }
-    /* Theme palettes (muted) */
-    body.theme-neutral{ background:#e9efeF; color:#26364d; }
+    body.theme-neutral{ background:#e9efef; color:#26364d; }
     body.theme-cool   { background:#dfeaf0; color:#26364d; }
     body.theme-warm   { background:#f3eadf; color:#3b2f2a; }
     body.theme-rain   { background:#e6edf1; color:#22303d; }
@@ -30,19 +29,18 @@
 
     .container{width:100%; animation:fadeIn 320ms ease-out both; position:relative}
 
-    /* Controls separated and fixed in the corner */
     .controls{position:fixed; top:12px; right:12px; display:flex; gap:.5rem; align-items:center; opacity:.85; z-index:10}
     .controls:hover{opacity:1}
     .icon-btn{background:none;border:none;cursor:pointer;font-size:1.6rem;color:var(--accent)}
     .mini{appearance:none; background:transparent; border:1px solid rgba(38,54,77,.25); color:inherit;
           padding:.25rem .5rem; border-radius:6px; font-size:.95rem}
 
-    /* Typography hierarchy */
     .wx-icon{ line-height:1; margin:0 auto .35rem }
-    .icon-stack{ display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:.1rem }
+    .icon-stack{ display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:.05rem }
     .material-symbols-rounded{ font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 48; display:block; color:currentColor; }
-    .weather-symbol{ font-size:clamp(3.5rem, 8vw, 5rem); line-height:1 }
-    .bike-symbol{ font-size:clamp(2.25rem, 5vw, 3.25rem); line-height:1; transform:translateY(-2px) }
+    .weather-symbol{ font-size:clamp(2.8rem, 6.5vw, 4.25rem); line-height:1 }
+    .bike-symbol{ font-size:clamp(3rem, 7.5vw, 4.5rem); line-height:1; transform:translateY(-2px) }
+
     h1{
       font-family:'Quattrocento', serif; font-weight:700;
       font-size:clamp(2.5rem, 6vw, 4rem); line-height:1.1;
@@ -61,14 +59,13 @@
       margin-top:.75rem; letter-spacing:-0.005em;
       transition: color 420ms ease;
     }
-    /* Advice color per theme */
+
     body.theme-neutral #advice{ color:#1e7f52 }
     body.theme-cool    #advice{ color:#1e7f52 }
     body.theme-warm    #advice{ color:#7d5a3a }
     body.theme-rain    #advice{ color:#1e6a7f }
     body.theme-snow    #advice{ color:#315a7d }
 
-    /* Manual location popover separated from layout */
     #locationInputContainer{display:none; position:fixed; top:52px; right:12px; background:#ffffffd9; color:#111; padding:.75rem; border-radius:8px; box-shadow:0 6px 24px rgba(0,0,0,.12); width:min(80vw,320px); text-align:left; z-index:11}
     #locationInputContainer input{width:100%; padding:.5rem .6rem; font-size:1rem; margin:.25rem 0 .5rem;}
     #locationInputContainer button{background:var(--accent2); color:white; border:none; border-radius:6px; padding:.45rem .7rem; font-size:1rem; cursor:pointer}
@@ -81,8 +78,7 @@
     @keyframes fadeIn{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
   </style>
 </head>
-<body>
-  <!-- Fixed controls in the upper right -->
+<body class="theme-neutral">
   <div class="controls">
     <select id="headingSelect" class="mini" title="Outbound heading">
       <option value="none">Heading</option>
@@ -103,13 +99,12 @@
   </div>
 
   <div class="container">
-    <div id="wxIcon" class="wx-icon" aria-hidden="true">☀️</div>
+    <div id="wxIcon" class="wx-icon" aria-hidden="true"><div class="icon-stack"><span class="material-symbols-rounded weather-symbol">hourglass_empty</span><span class="material-symbols-rounded bike-symbol">directions_bike</span></div></div>
     <h1 id="summary">Loading...</h1>
-    <div id="weather">Loading weather…</div>
-    <div id="advice" class="advice"></div>
+    <div id="weather">Fetching weather…</div>
+    <div id="advice" class="advice">Getting your ride details…</div>
   </div>
 
-  <!-- Detached manual location popover -->
   <div id="locationInputContainer">
     <label for="locationInput" style="font-size:.9rem;opacity:.8">Enter a city</label>
     <input id="locationInput" type="text" placeholder="e.g., Knoxville" />
@@ -117,7 +112,6 @@
   </div>
 
   <script>
-    /* --- Condition map --- */
     const WX = {
       0:{desc:'clear sky', icon:'wb_sunny'},
       1:{desc:'mostly clear', icon:'partly_cloudy_day'},
@@ -136,24 +130,18 @@
       75:{desc:'heavy snow', icon:'cloudy_snowing'},
       95:{desc:'thunderstorms', icon:'thunderstorm'}
     };
-    const $ = s => document.querySelector(s);
 
-    let lastData = null; // cache latest to recompute on heading change
+    const $ = s => document.querySelector(s);
+    let lastData = null;
 
     function toggleLocationInput(){
       const box = $('#locationInputContainer');
       box.style.display = (box.style.display === 'block') ? 'none' : 'block';
     }
 
-    function degDiff(a,b){
-      const d = Math.abs(((a - b + 540) % 360) - 180);
-      return d; // 0..180
-    }
+    function degDiff(a,b){ return Math.abs(((a - b + 540) % 360) - 180); }
 
-    function bearingToText(b){
-      const dirs = ['N','NE','E','SE','S','SW','W','NW'];
-      const idx = Math.round(b/45) % 8; return dirs[idx];
-    }
+    function bearingToText(b){ const dirs = ['N','NE','E','SE','S','SW','W','NW']; return dirs[Math.round(b/45) % 8]; }
 
     function relationship(windFromDeg, riderHeadingDeg){
       if (riderHeadingDeg == null || isNaN(riderHeadingDeg)) return {kind:'wind', label:'wind'};
@@ -260,9 +248,8 @@
       const tempF = fFromC(data.current_weather.temperature);
       const windMph = mph(data.current_weather.windspeed);
       const windFrom = data.current_weather.winddirection;
-      const code = data.current_weather.weathercode; const meta = WX[code] || {desc:'weather', icon:''};
+      const code = data.current_weather.weathercode; const meta = WX[code] || {desc:'weather', icon:'wb_sunny'};
 
-      // THEME — set based on conditions and temp (with CSS transition)
       applyTheme(chooseTheme(tempF, code));
 
       let idx = (data.hourly?.time||[]).findIndex(t => new Date(t).getTime() > Date.now());
@@ -273,68 +260,8 @@
       const headingVal = parseInt($('#headingSelect').value,10);
       const rel = relationship(windFrom, isNaN(headingVal)? null : headingVal);
 
-      // Icon above headline
-      iEl.innerHTML = meta.icon ? `<div class="icon-stack" aria-hidden="true"><span class="material-symbols-rounded weather-symbol">${meta.icon}</span><span class="material-symbols-rounded bike-symbol">directions_bike</span></div>` : '';
+      iEl.innerHTML = `<div class="icon-stack" aria-hidden="true"><span class="material-symbols-rounded weather-symbol">${meta.icon}</span><span class="material-symbols-rounded bike-symbol">directions_bike</span></div>`;
 
-      // Headline (cyclist flavor)
       let headline;
       if (tempF >= 90) headline = "It’s hot with a "+(rel.label);
-      else if (tempF >= 75) headline = "It’s warm with a "+(rel.label);
-      else if (tempF >= 60) headline = "It’s mild with a "+(rel.label);
-      else if (tempF >= 45) headline = "It’s cool with a "+(rel.label);
-      else headline = "It’s chilly with a "+(rel.label);
-      sEl.textContent = headline;
-
-      // Next‑6h single sentence
-      let nextSentence = '';
-      if (data.hourly && idx>=0){ nextSentence = summarizeNextSix(data.hourly, idx); }
-
-      // Precip likely soon flag for advice
-      let nextPrecipLikely = false;
-      if (data.hourly && idx>=0){
-        const codes = data.hourly.weathercode.slice(idx, Math.min(idx+6, data.hourly.weathercode.length));
-        nextPrecipLikely = codes.some(c => ['drizzle','rain','snow','storm'].includes(categoryFor(c)));
-      }
-
-      const route = $('#routeType').value;
-      const windText = `${windMph} mph ${rel.label} from the ${bearingToText(windFrom)}` + (gustNow>windMph?`; gusts to ${gustNow}`:'');
-      const hint = routeHint(rel.kind, route);
-      const nowSentence = `Right now it’s ${tempF}° (feels ${feelF}°) and ${meta.desc}, with ${windText}.${hint ? ' '+hint : ''}`;
-
-      wEl.textContent = `${nowSentence} ${nextSentence}`.trim();
-      aEl.textContent = adviceSentence(tempF, feelF, rel.kind, windMph, nextPrecipLikely);
-
-      lastData = data;
-    }
-
-    function fetchWeather(lat, lon){
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,apparent_temperature,weathercode,windgusts_10m`;
-      fetch(url).then(r=>r.json()).then(render).catch(()=>{
-        $('#weather').textContent='Error fetching weather.';
-      });
-    }
-
-    function fetchWeatherByCity(){
-      const city = $('#locationInput').value.trim(); if(!city) return;
-      const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`;
-      fetch(geoUrl).then(r=>r.json()).then(d=>{
-        if(d && d.results && d.results.length){ const loc=d.results[0]; fetchWeather(loc.latitude, loc.longitude); toggleLocationInput(); }
-        else { $('#weather').textContent='Location not found.'; }
-      }).catch(()=> $('#weather').textContent='Error finding location.');
-    }
-
-    if(navigator.geolocation){
-      navigator.geolocation.getCurrentPosition(
-        pos => fetchWeather(pos.coords.latitude, pos.coords.longitude),
-        () => { $('#weather').textContent='Location permission denied. Tap the pin to enter a city.'; }
-      );
-    } else { $('#weather').textContent='Geolocation not supported. Tap the pin to enter a city.'; }
-
-    ['headingSelect','routeType'].forEach(id=>{
-      document.addEventListener('change', e=>{
-        if(e.target && e.target.id===id && lastData){ render(lastData); }
-      });
-    });
-  </script>
-</body>
-</html>
+      else if (tempF >= 75) headline = "It
