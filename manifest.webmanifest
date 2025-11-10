@@ -1,8 +1,8 @@
 {
     "name": "Ride Forecast",
-    "short_name": "Ride Weather",
+    "short_name": "Ride Forecast",
     "description": "Plain-language cycling weather with route-aware wind hints.",
-    "start_url": "/ride-forecast/?source=pwa",
+    "start_url": "/ride-forecast/?source=pwa?v=1.1",
     "scope": "/ride-forecast/",
     "display": "standalone",
     "orientation": "portrait-primary",
