@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Simple Weather App</title>
+  <style>
+    body { font-family: sans-serif; padding: 1.5rem; max-width: 600px; margin: auto; }
+    #weather { margin-top: 1rem; }
+    input { padding: 0.4rem; margin-top: 0.5rem; width: 100%; }
+    button { margin-top: 0.5rem; padding: 0.4rem 0.8rem; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Weather</h1>
+  <div id="weather">Fetching weather...</div>
+
+  <hr/>
+  <h3>Enter location manually</h3>
+  <input id="locationInput" type="text" placeholder="City name (e.g., Knoxville)" />
+  <button onclick="fetchWeatherByCity()">Get Weather</button>
+
+  <script>
+    const weatherDescriptions = {
+      0: "clear sky",
+      1: "mostly clear",
+      2: "partly cloudy",
+      3: "overcast",
+      45: "foggy",
+      48: "dense fog",
+      51: "light drizzle",
+      53: "drizzle",
+      55: "heavy drizzle",
+      61: "light rain",
+      63: "rain",
+      65: "heavy rain",
+      71: "light snow",
+      73: "snow",
+      75: "heavy snow",
+      95: "thunderstorms",
+      96: "thunderstorms with light hail",
+      99: "thunderstorms with heavy hail"
+    };
+
+    function cToF(c) {
+      return Math.round((c * 9/5) + 32);
+    }
+
+    function kmhToMph(kmh) {
+      return Math.round(kmh * 0.621371);
+    }
+
+    function describeWeather(data) {
+      const tempF = cToF(data.current_weather.temperature);
+      const windMph = kmhToMph(data.current_weather.windspeed);
+      const code = data.current_weather.weathercode;
+      const desc = weatherDescriptions[code] || "current conditions";
+      return `It's ${tempF}°F and ${desc}, with winds around ${windMph} mph.`;
+    }
+
+    function displayWeather(data) {
+      const w = document.getElementById('weather');
+      if (!data || !data.current_weather) {
+        w.textContent = 'Weather data not available.';
+        return;
+      }
+      w.textContent = describeWeather(data);
+    }
+
+    function fetchWeather(lat, lon) {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+      fetch(url)
+        .then(r => r.json())
+        .then(displayWeather)
+        .catch(() => {
+          document.getElementById('weather').textContent = 'Error fetching weather.';
+        });
+    }
+
+    function fetchWeatherByCity() {
+      const city = document.getElementById('locationInput').value.trim();
+      if (!city) return;
+
+      const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`;
+      fetch(geoUrl)
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.results && data.results.length > 0) {
+            const loc = data.results[0];
+            fetchWeather(loc.latitude, loc.longitude);
+          } else {
+            document.getElementById('weather').textContent = 'Location not found.';
+          }
+        })
+        .catch(() => {
+          document.getElementById('weather').textContent = 'Error finding location.';
+        });
+    }
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => fetchWeather(pos.coords.latitude, pos.coords.longitude),
+        () => {
+          document.getElementById('weather').textContent = 'Location permission denied. Enter a city above.';
+        }
+      );
+    } else {
+      document.getElementById('weather').textContent = 'Geolocation not supported. Enter a city above.';
+    }
+  </script>
+</body>
+</html>
