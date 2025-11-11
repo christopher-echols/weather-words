@@ -9,9 +9,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Quattrocento:wght@700&family=Questrial&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300,0..1,0" rel="stylesheet" />
   <!-- PWA -->
-  <link rel="manifest" href="./manifest.webmanifest?v=1.5">
+  <link rel="manifest" href="./manifest.webmanifest?v=1.6">
   <meta name="theme-color" content="#e9efef">
-  <link rel="apple-touch-icon" href="./icons/icon-192.png?v=1.5">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png?v=1.6">
   <style>
     :root{ --accent:#20a2ee; --accent2:#1ec278; }
     *{box-sizing:border-box}
@@ -268,70 +268,178 @@
     return 'other';
   }
 
-  /* === Horizon summaries (remove current temp/wind; focus on gusts, precip, wind shifts) === */
-  function summarizeHorizon(hourly, startIdx, hours){
-    const endIdx = Math.min(startIdx + Math.max(1, hours), hourly.time.length);
-    if (!hourly.time || startIdx < 0 || startIdx >= endIdx) return '';
-
-    const codes = hourly.weathercode.slice(startIdx, endIdx);
-    const probs = (hourly.precipitation_probability||[]).slice(startIdx, endIdx);
-    const gusts = (hourly.windgusts_10m||[]).slice(startIdx, endIdx).map(Number);
-    const temps = (hourly.temperature_2m||[]).slice(startIdx, endIdx).map(Number);
-    const dirs  = (hourly.winddirection_10m||[]).slice(startIdx, endIdx).map(Number);
-
-    // Precip timing (any significant precip or >=50% prob)
-    let precipIdx = -1, precipLabel = '';
-    for (let i=0;i<codes.length;i++){
-      const cat = categoryFor(codes[i]);
-      const prob = Number(probs[i])||0;
-      if (['rain','drizzle','snow','storm'].includes(cat) || prob >= 50){
-        precipIdx = i;
-        precipLabel = (cat==='storm') ? 'thunderstorms' :
-                      (cat==='snow')  ? 'snow' :
-                      (cat==='rain')  ? 'rain' :
-                      'light rain';
-        break;
-      }
-    }
-
-    // Gusts now vs max within horizon
-    const gNow = Math.round(Number(hourly.windgusts_10m?.[startIdx])||0);
-    const gMax = Math.round(gusts.reduce((m,v)=> Math.max(m, v||0), 0));
-    const gustPart = (gMax > gNow + 5) ? `Gusts rise to around ${gMax} mph` :
-                     (gNow > 0 && gNow >= gMax) ? `Gusts ease a bit later` : '';
-
-    // Temperature drift (meaningful +/- 4°F)
-    const f0 = fFromC(temps[0] ?? temps);
-    const fL = fFromC(temps[temps.length-1] ?? temps);
-    const dF = (Number.isFinite(f0) && Number.isFinite(fL)) ? (fL - f0) : 0;
-    const tempPart = (Math.abs(dF) >= 4) ? (dF>0 ? 'Temps tick up' : 'Temps ease down') : '';
-
-    // Wind direction change (>=30° across horizon)
-    const dir0 = Number(dirs[0]);
-    const dirL = Number(dirs[dirs.length-1]);
-    let windShiftPart = '';
-    if (Number.isFinite(dir0) && Number.isFinite(dirL)){
-      const change = degDiff(dirL, dir0);
-      if (change >= 30){
-        const fromA = bearingWord(dir0), fromB = bearingWord(dirL);
-        windShiftPart = `Winds veer from ${fromA} to ${fromB}`;
-      }
-    }
-
-    // Precip timing phrase
-    let precipPart = '';
-    if (precipIdx !== -1){
-      const firstHour = new Date(hourly.time[startIdx]).getHours();
-      const when = precipIdx<=1 ? 'soon' : 'by ' + periodLabel((firstHour + precipIdx) % 24);
-      precipPart = `${cap(precipLabel)} expected ${when}`;
-    }
-
-    // Build sentence set (omit empties, join smartly)
-    const bits = [precipPart, gustPart, windShiftPart || tempPart].filter(Boolean);
-    if (!bits.length) return 'It should stay fairly steady and dry for a while.';
-    const s = bits.join('. ') + '.';
-    return s.replace(/\s+/g,' ').trim();
+  /* === Horizon summaries (varied + prioritized) === */
+(function ensureVarHelpers(){
+  // Inject tiny helpers once if they don't exist
+  if (typeof seedFrom !== 'function') {
+    window.seedFrom = function seedFrom(...args){
+      const s = args.join('|'); let h = 2166136261>>>0;
+      for (let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h += (h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24); }
+      return h>>>0;
+    };
   }
+  if (typeof pick !== 'function') {
+    window.pick = function pick(list, seed){
+      if (!Array.isArray(list) || !list.length) return '';
+      const n = Math.abs(Number(seed)) % list.length;
+      return list[n];
+    };
+  }
+})();
+
+function summarizeHorizon(hourly, startIdx, hours){
+  const endIdx = Math.min(startIdx + Math.max(1, hours), hourly.time.length);
+  if (!hourly.time || startIdx < 0 || startIdx >= endIdx) return '';
+
+  const t0Str = String(hourly.time[startIdx] || '');
+  const seed  = seedFrom(t0Str, hours);
+  const hPick = (arr) => pick(arr, seed);
+
+  // Slices
+  const codes = (hourly.weathercode||[]).slice(startIdx, endIdx);
+  const probs = (hourly.precipitation_probability||[]).slice(startIdx, endIdx).map(n=>Number(n)||0);
+  const gusts = (hourly.windgusts_10m||[]).slice(startIdx, endIdx).map(n=>Math.round((Number(n)||0)/1.609)); // mph
+  const wspds = (hourly.windspeed_10m||[]).slice(startIdx, endIdx).map(n=>Math.round((Number(n)||0)/1.609)); // mph
+  const tempsC= (hourly.temperature_2m||[]).slice(startIdx, endIdx).map(Number);
+  const dirs  = (hourly.winddirection_10m||[]).slice(startIdx, endIdx).map(Number);
+
+  // Helpers
+  const cat = (c)=> {
+    if ([51,53,55].includes(c)) return 'drizzle';
+    if ([61,63,65,80,81,82].includes(c)) return 'rain';
+    if ([71,73,75,77,85,86].includes(c)) return 'snow';
+    if ([95,96,99].includes(c)) return 'storm';
+    if ([45,48].includes(c)) return 'fog';
+    if ([0,1,2,3].includes(c)) return 'dry';
+    return 'other';
+  };
+  const degDelta = (a,b)=> Math.abs(((a - b + 540) % 360) - 180);
+  const fFromC = (c)=> Math.round((Number(c)||0)*9/5 + 32);
+
+  // ——— Signals ———
+  // 1) Precip signal
+  let precipIdx = -1, precipType = null;
+  for (let i=0;i<codes.length;i++){
+    const k = cat(codes[i]);
+    if (['storm','snow','rain','drizzle','fog'].includes(k) || probs[i] >= 50){
+      precipIdx = i;
+      precipType = k==='storm' ? 'thunderstorms'
+                 : k==='snow'  ? 'snow'
+                 : k==='rain'  ? 'rain'
+                 : k==='drizzle' ? 'light rain'
+                 : k==='fog' ? 'fog'
+                 : 'showers';
+      break;
+    }
+  }
+  const pMax = Math.max(...(probs.length?probs:[0]));
+  const hasLowChance = (precipIdx === -1 && pMax > 0 && pMax < 25);
+
+  // 2) Wind shift + gusts
+  const gNow = gusts[0]||0;
+  const gMax = Math.max(...gusts, 0);
+  const gMin = Math.min(...gusts, 0);
+  const gustRise = gMax - gNow;
+  const gustFall = gNow - gMin;
+
+  const wNow = wspds[0]||0;
+  const isLightWind = wNow < 8 && gMax < 15;
+
+  const d0 = Number(dirs[0]);
+  const dL = Number(dirs[dirs.length-1]);
+  let windShift = '';
+  if (Number.isFinite(d0) && Number.isFinite(dL)){
+    const change = degDelta(dL, d0);
+    if (change >= 60) windShift = `winds ${hPick(['veer','shift','swing'])} from ${bearingWord(d0)} to ${bearingWord(dL)}`;
+    else if (change >= 30) windShift = `winds trend toward ${bearingWord(dL)}`;
+    else windShift = `winds hold mostly ${bearingWord(d0)}`;
+  }
+
+  // 3) Temperature drift (meaningful +/- 4°F)
+  const f0 = fFromC(tempsC[0]);
+  const fL = fFromC(tempsC[tempsC.length-1]);
+  const dF = (Number.isFinite(f0) && Number.isFinite(fL)) ? (fL - f0) : 0;
+  const tempPhrase = Math.abs(dF) >= 4
+    ? (dF>0 ? hPick(['temps climb a bit','temps edge up','a gradual warm-up']) 
+            : hPick(['temps ease down','temps drift cooler','a slight cool-down']))
+    : '';
+
+  // 4) Sky/steadiness
+  const cats = codes.map(cat);
+  const allDry = cats.every(c => c==='dry' || c==='other');
+  const anySnow = cats.some(c => c==='snow');
+  const skyPhrase = anySnow ? 'wintry at times' :
+                    allDry ? hPick(['stays mostly dry','stays fair','partly cloudy at times']) :
+                    '';
+
+  // ——— Build candidate phrases by priority ———
+  const bits = [];
+
+  // Precip (highest priority)
+  if (precipIdx !== -1){
+    const firstHour = new Date(hourly.time[startIdx]).getHours();
+    const when = precipIdx<=1 ? hPick(['soon','shortly'])
+               : 'by ' + (['this morning','this afternoon','this evening','overnight'][Math.floor(((firstHour+precipIdx)%24)/6)]);
+    const verbs = (precipType==='thunderstorms') ? ['are possible','threaten','move in'] :
+                  (precipType==='snow') ? ['arrives','moves in','is likely'] :
+                  ['arrives','moves in','is likely'];
+    bits.push(`${cap(precipType)} ${hPick(verbs)} ${when}`);
+  } else if (hasLowChance){
+    bits.push(hPick([
+      'Low rain chance (<25%) over this window',
+      'A stray shower is possible, but unlikely',
+      'Mostly dry; only a slight chance of a shower'
+    ]));
+  }
+
+  // Wind (gust priority over shift if meaningful; skip if very light)
+  if (!isLightWind){
+    if (gustRise >= 6){
+      bits.push(`${hPick(['gusts build to around','gusts rise toward','gusts top out near'])} ${gMax} mph`);
+    } else if (gustFall >= 6){
+      bits.push(hPick([
+        `gusts ease from about ${gNow} to ~${gMin} mph`,
+        `gusts back off later`,
+        `strongest gusts come early`
+      ]));
+    } else if (gMax >= 22){
+      bits.push(`${hPick(['breezy at times','windy in spots'])}, ${hPick(['gusts near','gusts up to'])} ${gMax} mph`);
+    }
+  }
+
+  // Wind direction change (only add if not already added a wind line or if shift is large)
+  if (windShift && (gustRise < 6 && gustFall < 6 || degDelta(dL, d0) >= 45)){
+    bits.push(windShift);
+  }
+
+  // Temperature drift (if meaningful)
+  if (tempPhrase){
+    bits.push(tempPhrase);
+  }
+
+  // Sky / steadiness fallback
+  if (!bits.length){
+    bits.push(skyPhrase || hPick([
+      'Little change expected',
+      'Should stay fairly steady',
+      'No big swings expected'
+    ]));
+  }
+
+  // Compose 1–2 sentences to avoid walls of text; vary order a bit
+  const maxParts = 2;
+  const chosen = bits.slice(0, maxParts);
+  // light shuffle based on seed
+  if (chosen.length === 2 && (seed % 2 === 0)) chosen.reverse();
+
+  // Capitalize first, end with period
+  const out = chosen.map((s,i)=> {
+    const t = String(s||'').trim();
+    return i===0 ? cap(t.replace(/\.$/,'')) : t.replace(/\.$/,'');
+  }).join('. ') + '.';
+
+  return out.replace(/\s+/g,' ').trim();
+}
 
   /* --- meta fallback to avoid undefined desc/icon --- */
   function metaFor(code){
