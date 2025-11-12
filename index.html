@@ -9,9 +9,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Quattrocento:wght@700&family=Questrial&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300,0..1,0" rel="stylesheet" />
   <!-- PWA -->
-  <link rel="manifest" href="./manifest.webmanifest?v=1.1.2">
+  <link rel="manifest" href="./manifest.webmanifest?v=1.1.3">
   <meta name="theme-color" content="#e9efef">
-  <link rel="apple-touch-icon" href="./icons/icon-192.png?v=1.1.2">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png?v=1.1.3">
   <style>
     :root{ --accent:#20a2ee; --accent2:#1ec278; }
     *{box-sizing:border-box}
@@ -36,12 +36,12 @@
 
 .wx-icon{
   line-height:1;
-  margin:0 auto .42rem; /* was .35rem */
+  margin:0 auto 3.5rem;
 }    .icon-stack{ display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:.25rem }
     .material-symbols-rounded{ font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 48; display:block; color:currentColor; }
     .weather-symbol{ font-size:clamp(2.6rem, 6vw, 3.8rem); line-height:1 }
 .bike-symbol{
-  font-size:clamp(3.85rem, 8.25vw, 5.5rem); /* was 3.5rem, 7.5vw, 5rem */
+  font-size:clamp(3.85rem, 8.25vw, 5.5rem);
   line-height:1;
   transform:translateY(-3px);
 }    .bike-wrap{display:inline-flex; align-items:center; gap:.35rem}
@@ -624,6 +624,19 @@ function composeOutlook(data, headingDeg, routeType, rideMinutes){
     }catch(_){}
   }
 
+  function feelWord(tempF, code) {
+  const cat = categoryFor(code);
+  if (cat === 'snow' || cat === 'drizzle' || cat === 'rain') return cat;
+  if (cat === 'fog') return 'foggy';
+  if (cat === 'storm') return 'stormy';
+  if (tempF <= 20) return 'icy';
+  if (tempF <= 40) return 'cold';
+  if (tempF <= 60) return 'cool';
+  if (tempF <= 75) return 'mild';
+  if (tempF <= 85) return 'warm';
+  return 'hot';
+}
+
   /* --- Render + Fetch --- */
   function render(data){
     const sEl = $('#summary'), aEl = $('#advice'), iEl = $('#wxIcon');
@@ -668,7 +681,8 @@ function composeOutlook(data, headingDeg, routeType, rideMinutes){
         </div>
       </div>`;
 
-    const headline = `It’s ${isFinite(tempF)?tempF:'—'}° with a ${isFinite(windMph)?windMph:'—'} mph ${rel.label}`;
+const feel = feelWord(tempF, code);
+const headline = `It’s ${isFinite(tempF)?tempF:'—'}° and ${feel} with a ${isFinite(windMph)?windMph:'—'} mph ${rel.label}`;
     sEl.textContent = headline;
 
     const minutes = Number($('#rideLen').value) || 60;
