@@ -1,5 +1,5 @@
 /* Ride Forecast — simple SW cache */
-const WW_CACHE = 'ww-shell-v1.8';
+const WW_CACHE = 'ww-shell-v1.9';
 const SHELL = [
   './',
   './index.html',
