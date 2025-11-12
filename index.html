@@ -9,9 +9,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Quattrocento:wght@700&family=Questrial&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300,0..1,0" rel="stylesheet" />
   <!-- PWA -->
-  <link rel="manifest" href="./manifest.webmanifest?v=1.1.0">
+  <link rel="manifest" href="./manifest.webmanifest?v=1.1.1">
   <meta name="theme-color" content="#e9efef">
-  <link rel="apple-touch-icon" href="./icons/icon-192.png?v=1.1.0">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png?v=1.1.1">
   <style>
     :root{ --accent:#20a2ee; --accent2:#1ec278; }
     *{box-sizing:border-box}
@@ -473,13 +473,23 @@
 
     // Micro tip (contextual)
     let tip = '';
-    if (precipIdx !== -1) tip = oneOf(PHRASES.TIP_RAIN, precipIdx, 11);
-    else if (nowSpd>=14 || gustMax>=22) tip = oneOf(PHRASES.TIP_WINDY, nowSpd, 12);
-    else {
+    let tipKind = '';
+    if (precipIdx !== -1) {
+      tip = oneOf(PHRASES.TIP_RAIN, precipIdx, 11);
+      tipKind = 'precip';
+    } else if (nowSpd>=14 || gustMax>=22) {
+      tip = oneOf(PHRASES.TIP_WINDY, nowSpd, 12);
+      tipKind = 'wind';
+    } else {
       const feelC = (Number(hourly.apparent_temperature?.[curIdx]) || Number(tempsC[0]) || 0);
       const feelF = fFromC(feelC);
-      if (feelF<=45) tip = oneOf(PHRASES.TIP_COLD, feelF, 13);
-      else if (feelF>=84) tip = oneOf(PHRASES.TIP_HOT, feelF, 14);
+      if (feelF<=45) {
+        tip = oneOf(PHRASES.TIP_COLD, feelF, 13);
+        tipKind = 'cold';
+      } else if (feelF>=84) {
+        tip = oneOf(PHRASES.TIP_HOT, feelF, 14);
+        tipKind = 'hot';
+      }
     }
 
     // If headwind eases soon, surface that early
@@ -493,21 +503,38 @@
     else opener = oneOf(PHRASES.NEUTRAL_OPENER, nowSpd, 16);
 
     // Build and polish 2–3 sentences, wind-first
-    const parts = [
+    const windParts = [
       opener,
       detail,
       shiftLine || gustLine,
       strat,
-      precipLine || '',
-      tempLine || '',
-      tip || ''
+      tipKind === 'wind' ? tip : ''
     ].filter(Boolean);
 
-    const seed = seedFrom(nowSpd, endSpd, endH, routeType);
-    const trio = [parts[0], parts[1], (shiftLine || gustLine || strat || parts[2])].filter(Boolean);
-    if ((seed % 2) === 0 && parts[3]) trio.push(parts[3]);
+    const weatherParts = [
+      precipLine || '',
+      tempLine || '',
+      (tip && tipKind && tipKind !== 'wind') ? tip : ''
+    ].filter(Boolean);
 
-    return finalizeSentences(trio);
+    const sentences = [];
+    if (windParts.length) sentences.push(windParts.shift());
+    if (weatherParts.length) {
+      sentences.push(weatherParts.shift());
+    } else if (windParts.length) {
+      sentences.push(windParts.shift());
+    }
+
+    const remainder = [...windParts, ...weatherParts];
+    const seed = seedFrom(nowSpd, endSpd, endH, routeType);
+    if ((seed % 2) === 0) remainder.reverse();
+    while (sentences.length < 3 && remainder.length){
+      sentences.push(remainder.shift());
+    }
+
+    if (!sentences.length && tip) sentences.push(tip);
+
+    return finalizeSentences(sentences);
   }
 
   /* --- Location UI --- */
