@@ -9,9 +9,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Quattrocento:wght@700&family=Questrial&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300,0..1,0" rel="stylesheet" />
   <!-- PWA -->
-  <link rel="manifest" href="./manifest.webmanifest?v=1.1.1">
+  <link rel="manifest" href="./manifest.webmanifest?v=1.1.2">
   <meta name="theme-color" content="#e9efef">
-  <link rel="apple-touch-icon" href="./icons/icon-192.png?v=1.1.1">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png?v=1.1.2">
   <style>
     :root{ --accent:#20a2ee; --accent2:#1ec278; }
     *{box-sizing:border-box}
@@ -34,12 +34,17 @@
     .icon-btn .material-symbols-rounded{font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24; font-size:1.6rem; line-height:1}
     .mini{appearance:none;background:transparent;border:1px solid rgba(38,54,77,.25);color:inherit;padding:.25rem .5rem;border-radius:6px;font-size:.95rem}
 
-    .wx-icon{line-height:1;margin:0 auto .35rem}
-    .icon-stack{ display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:.25rem }
+.wx-icon{
+  line-height:1;
+  margin:0 auto .42rem; /* was .35rem */
+}    .icon-stack{ display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:.25rem }
     .material-symbols-rounded{ font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 48; display:block; color:currentColor; }
     .weather-symbol{ font-size:clamp(2.6rem, 6vw, 3.8rem); line-height:1 }
-    .bike-symbol{ font-size:clamp(3.5rem, 7.5vw, 5rem); line-height:1; transform:translateY(-3px) }
-    .bike-wrap{display:inline-flex; align-items:center; gap:.35rem}
+.bike-symbol{
+  font-size:clamp(3.85rem, 8.25vw, 5.5rem); /* was 3.5rem, 7.5vw, 5rem */
+  line-height:1;
+  transform:translateY(-3px);
+}    .bike-wrap{display:inline-flex; align-items:center; gap:.35rem}
     .wind-icon{font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24; font-size:clamp(1.6rem,4.2vw,2.2rem); line-height:1; opacity:.35}
     .wind-icon.flip {transform: rotate(180deg);}
 
@@ -167,15 +172,15 @@
     document.body.classList.remove('theme-neutral','theme-cool','theme-warm','theme-rain','theme-snow');
     document.body.classList.add(theme);
   }
-  function categoryFor(code){
-    if ([51,53,55].includes(code)) return 'drizzle';
-    if ([61,63,65,80,81,82].includes(code)) return 'rain';
-    if ([71,73,75,77,85,86].includes(code)) return 'snow';
-    if ([95,96,99].includes(code)) return 'storm';
-    if ([45,48].includes(code)) return 'fog';
-    if ([0,1,2,3].includes(code)) return 'dry';
-    return 'other';
-  }
+function categoryFor(code){
+  if ([51,53,55,56,57].includes(code)) return 'drizzle'; // includes freezing drizzle
+  if ([61,63,65,66,67,80,81,82].includes(code)) return 'rain'; // includes freezing rain
+  if ([71,73,75,77,85,86].includes(code)) return 'snow';
+  if ([95,96,99].includes(code)) return 'storm';
+  if ([45,48].includes(code)) return 'fog';
+  if ([0,1,2,3].includes(code)) return 'dry';
+  return 'other';
+}
 
   /* === Variation helpers (seeded picks) === */
   (function ensureVarHelpers(){
@@ -195,159 +200,177 @@
     }
   })();
 
-  /* ========== WIND-FIRST PHRASEBANK (doubled variants) ========== */
-  const PHRASES = {
-    HEAD_EASING: [
-      "Headwinds are stiff now; they ease in about an hour.",
-      "Tough headwind at the moment—conditions improve shortly.",
-      "It’s grindy now into a headwind; give it an hour and it backs off.",
-      "Strong headwind for the moment; it relaxes before long."
-    ],
-    TAIL_PAYBACK: [
-      "Quick outbound with tailwind, but expect a grind coming back.",
-      "It’s fast out, slow home—save a gear for the return.",
-      "Enjoy the push out; the payback is a headwind home.",
-      "You’ll fly out with a tailwind and fight back into it."
-    ],
-    BEST_WINDOW: [
-      "Your best two-hour window starts around {time}.",
-      "Wait ~{delay} min for a friendlier wind window.",
-      "Sweet spot starts near {time}; winds are less punishing then.",
-      "Give it ~{delay} minutes—conditions trend more favorable."
-    ],
-    REVERSE_ADVANTAGE: [
-      "Reverse the route for a steady tailwind.",
-      "Flip direction and the wind works for you.",
-      "Run it the other way to turn headwind into help.",
-      "Go reverse and you’ll ride the breeze."
-    ],
-    NEUTRAL_OPENER: [
-      "Winds are manageable now; pick your line and go.",
-      "Nothing brutal wind-wise right now—have at it.",
-      "Wind looks reasonable at the moment—roll when ready.",
-      "Conditions are workable—no need to overthink timing."
-    ],
-    WIND_DETAIL: [
-      "{nowSpd} mph from the {nowDir}, trending {trendWord} to {endSpd} by {endPeriod}.",
-      "Currently {nowSpd} mph {nowRel}, easing toward {endSpd} by {endPeriod}.",
-      "{nowSpd} mph from the {nowDir} now, building toward {endSpd} by {endPeriod}.",
-      "Starts near {nowSpd} mph ({nowRel}); looks {trendWord} to around {endSpd} by {endPeriod}."
-    ],
-    SHIFT_PHRASES: [
-      "Winds {shiftVerb} from {dirA} to {dirB}.",
-      "Direction shifts from {dirA} toward {dirB}.",
-      "Expect a swing from {dirA} to {dirB}.",
-      "Flow veers from {dirA} into {dirB}."
-    ],
-    GUST_PHRASES: [
-      "Gusts {gustVerb} to ~{gustMax} mph.",
-      "With gusts near {gustMax} mph at times.",
-      "Gusts could touch {gustMax} mph.",
-      "Gusts trend toward {gustMax} mph."
-    ],
-    GUST_VERBS: ["build", "top out", "back off", "peak"],
-    OUTBACK_TAIL: [
-      "Tailwind on the way back—settle in early and flip it home.",
-      "You’ll get paid back with a tailwind home—pace the outbound.",
-      "Return leg has a push—keep the first half controlled.",
-      "Bank energy out; the tail returns you nicely."
-    ],
-    OUTBACK_HEAD: [
-      "Headwind home—pace the first half and keep something in reserve.",
-      "Save a gear for the return; you’ll be into it on the way back.",
-      "Expect a slog back; meter your effort outbound.",
-      "Return ride is into the wind—spin easy early."
-    ],
-    OUTBACK_CROSS: [
-      "Crosswind both ways—hold a steady line on exposed sections.",
-      "Expect crosswinds round-trip—mind gusts on open stretches.",
-      "It’s mostly cross both directions—relaxed grip, smooth cadence.",
-      "Sidewind both ways—watch the gaps and bridges."
-    ],
-    OUTBACK_NEUTRAL: [
-      "Out & back looks balanced—no big wind swing.",
-      "Route balance is decent—neutral overall.",
-      "Out & back won’t punish—winds fairly even.",
-      "Both legs feel similar—no major wind bias."
-    ],
-    ONEWAY_TAIL: [
-      "Go {reverseDirWord} for tailwind assist.",
-      "Opposite heading turns this into a free ride.",
-      "Flip direction for a steady push.",
-      "Run the reverse for a tail-assisted day."
-    ],
-    ONEWAY_HEAD: [
-      "Current heading means prolonged headwind.",
-      "Plan on sustained headwind on this line.",
-      "This direction stays into it—consider changing headings.",
-      "Expect a steady headwind if you keep this course."
-    ],
-    ONEWAY_CROSS: [
-      "This line rides crosswind most of the way.",
-      "Largely crosswind along this heading.",
-      "Expect sidewind over much of the route.",
-      "Cross-dominant—pick sheltered corridors."
-    ],
-    ONEWAY_NEUTRAL: [
-      "One-way looks neutral—no clear wind gain.",
-      "Not much to gain either way today.",
-      "Direction choice is a wash—pick the nicer roads.",
-      "Wind doesn’t favor either heading strongly."
-    ],
-    LOOP_TACTICS: [
-      "Do the exposed side first; you’ll get a push late.",
-      "Run the windy half early and finish with help.",
-      "Tackle open sections up front; shelter later.",
-      "Clockwise/counterclockwise won’t matter much—start with exposure."
-    ],
-    PRECIP_PHRASES: [
-      "Showers move in {when}.",
-      "Mostly dry, but a shower {when}.",
-      "Rain arrives {when}.",
-      "A stray shower possible {when}."
-    ],
-    TEMP_TRENDS: {
-      up: ["Temps edge up over the window.", "A gradual warm-up through the ride."],
-      down: ["Temps ease down over the window.", "A slight cool-down as you go."],
-      steady: ["Temps stay fairly steady.", "No big temperature swings expected."]
-    },
-    TIP_WINDY: [
-      "Stay low on open stretches.",
-      "Keep cadence smooth and shoulders relaxed.",
-      "Pick sheltered lines where you can.",
-      "Let effort float—don’t chase speed into the wind."
-    ],
-    TIP_HOT: [
-      "Carry extra water and sip early.",
-      "Top up electrolytes and back off on climbs.",
-      "Shade helps—pace for heat.",
-      "Shorten pulls; heat adds load."
-    ],
-    TIP_COLD: [
-      "Full-finger gloves and a windproof layer help.",
-      "Cover ears and fingers; start slightly overdressed.",
-      "Block the wind; vent on climbs.",
-      "Thin liner gloves go a long way."
-    ],
-    TIP_RAIN: [
-      "Pack a light shell and run lights.",
-      "Fenders help; watch paint and metal decks.",
-      "Bright rear light for spray.",
-      "Seal phone/wallet; roads get slick."
-    ],
-    TRENDS: { easing: ["easing", "backing off"], rising: ["building", "picking up"], steady: ["holding", "staying steady"] },
-    SHIFT_VERBS: ["veer", "swing", "shift toward", "turn from"],
-    SOON: ["soon", "shortly", "before long", "later"]
-  };
+ /* ========== PHRASES (wind-first + hazards) ========== */
+const PHRASES = {
+  TRENDS: { easing: ["easing", "backing off"], rising: ["building", "picking up"], steady: ["holding", "staying steady"] },
+  SHIFT_VERBS: ["veer", "swing", "shift toward", "turn from"],
+  SOON: ["soon", "shortly", "before long", "later"],
 
-  // Per-load salt so phrasing varies each refresh (stable within a single load)
-  const PHRASE_SALT = (() => {
-    try {
-      return (crypto.getRandomValues(new Uint32Array(1))[0]) >>> 0;
-    } catch {
-      return (Math.floor(Math.random() * 1e9)) >>> 0;
-    }
-  })();
+  WIND_DETAIL: [
+    "{nowSpd} mph from the {nowDir}, trending {trendWord} to {endSpd} by {endPeriod}.",
+    "Currently {nowSpd} mph {nowRel}, easing toward {endSpd} by {endPeriod}.",
+    "{nowSpd} mph from the {nowDir} now, {trendWord} to {endSpd} by {endPeriod}.",
+    "Starts near {nowSpd} mph ({nowRel}); looks {trendWord} to around {endSpd} by {endPeriod}."
+  ],
+  SHIFT_PHRASES: [
+    "Winds {shiftVerb} from {dirA} to {dirB}.",
+    "Direction shifts from {dirA} toward {dirB}.",
+    "Expect a swing from {dirA} to {dirB}.",
+    "Flow veers from {dirA} into {dirB}."
+  ],
+  GUST_PHRASES: [
+    "Gusts could touch {gustMax} mph.",
+    "With gusts near {gustMax} mph at times.",
+    "Gusts trend toward {gustMax} mph.",
+    "Gusts {gustVerb} to ~{gustMax} mph."
+  ],
+  GUST_VERBS: ["build", "top out", "back off", "peak"],
+
+  // Route strategy
+  OUTBACK_TAIL: [
+    "Tailwind on the way back—settle in early and flip it home.",
+    "You’ll get paid back with a tailwind home—pace the outbound.",
+    "Return leg has a push—keep the first half controlled.",
+    "Bank energy out; the tail returns you nicely."
+  ],
+  OUTBACK_HEAD: [
+    "Headwind home—pace the first half and keep something in reserve.",
+    "Save a gear for the return; you’ll be into it on the way back.",
+    "Expect a slog back; meter your effort outbound.",
+    "Return ride is into the wind—spin easy early."
+  ],
+  OUTBACK_CROSS: [
+    "Crosswind both ways—hold a steady line on exposed sections.",
+    "Expect crosswinds round-trip—mind gusts on open stretches.",
+    "It’s mostly cross both directions—relaxed grip, smooth cadence.",
+    "Sidewind both ways—watch the gaps and bridges."
+  ],
+  OUTBACK_NEUTRAL: [
+    "Out & back looks balanced—no big wind swing.",
+    "Route balance is decent—neutral overall.",
+    "Out & back won’t punish—winds fairly even.",
+    "Both legs feel similar—no major wind bias."
+  ],
+  ONEWAY_TAIL: [
+    "Go {reverseDirWord} for tailwind assist.",
+    "Opposite heading turns this into a free ride.",
+    "Flip direction for a steady push.",
+    "Run the reverse for a tail-assisted day."
+  ],
+  ONEWAY_HEAD: [
+    "Current heading means prolonged headwind.",
+    "Plan on sustained headwind on this line.",
+    "This direction stays into it—consider changing headings.",
+    "Expect a steady headwind if you keep this course."
+  ],
+  ONEWAY_CROSS: [
+    "This line rides crosswind most of the way.",
+    "Largely crosswind along this heading.",
+    "Expect sidewind over much of the route.",
+    "Cross-dominant—pick sheltered corridors."
+  ],
+  ONEWAY_NEUTRAL: [
+    "One-way looks neutral—no clear wind gain.",
+    "Not much to gain either way today.",
+    "Direction choice is a wash—pick the nicer roads.",
+    "Wind doesn’t favor either heading strongly."
+  ],
+  LOOP_TACTICS: [
+    "Do the exposed side first; you’ll get a push late.",
+    "Run the windy half early and finish with help.",
+    "Tackle open sections up front; shelter later.",
+    "Clockwise/counterclockwise won’t matter much—start with exposure."
+  ],
+
+  // Hazards
+  HAZARD_STORM: [
+    "Thunderstorms in the window—delay if possible.",
+    "Storms around this period—best to wait it out.",
+    "Electrical storms nearby—skip the ride until it clears.",
+    "Thunder is possible—indoor miles are smarter."
+  ],
+  HAZARD_RAIN_NOW: [
+    "Steady rain in the window—wet roads and spray likely.",
+    "Rain through much of this period—visibility and braking reduced.",
+    "Expect a wet ride—persistent rain in the window.",
+    "Rain dominates this window—plan for slick corners."
+  ],
+  HAZARD_RAIN_SOON: [
+    "Showers move in {when}.",
+    "Mostly dry now, showers {when}.",
+    "Rain arrives {when}.",
+    "A stray shower possible {when}."
+  ],
+  HAZARD_SNOW: [
+    "Snow at times—watch for slush and icy patches.",
+    "Wintry bursts possible—reduced traction.",
+    "Snow in the window—be cautious on shaded corners.",
+    "Snow showers may pass through—roads can glaze."
+  ],
+  HAZARD_FOG: [
+    "Foggy—run bright lights and add margin at intersections.",
+    "Patchy fog lowers visibility—take it easy.",
+    "Fog in spots—high-viz and lights recommended.",
+    "Low visibility with fog—extra caution on descents."
+  ],
+  HAZARD_HEAT: [
+    "Heat is a factor—hydrate early and often.",
+    "Very warm—pace climbs and carry extra water.",
+    "Hot conditions—electrolytes and shade when you can.",
+    "High heat load—shorten efforts and cool as needed."
+  ],
+  HAZARD_COLD: [
+    "Biting cold—layer up and block the wind.",
+    "Very cold—cover ears/fingers, watch for black ice.",
+    "Sub-freezing feel—shorter loops are wiser.",
+    "Cold snap—wind block and warmers advised."
+  ],
+
+  // Other
+  PRECIP_PHRASES: [
+    "Showers move in {when}.",
+    "Mostly dry, but a shower {when}.",
+    "Rain arrives {when}.",
+    "A stray shower possible {when}."
+  ],
+  TEMP_TRENDS: {
+    up: ["Temps edge up over the window.", "A gradual warm-up through the ride."],
+    down: ["Temps ease down over the window.", "A slight cool-down as you go."],
+    steady: ["Temps stay fairly steady.", "No big temperature swings expected."]
+  },
+  TIP_WINDY: [
+    "Stay low on open stretches.",
+    "Keep cadence smooth and shoulders relaxed.",
+    "Pick sheltered lines where you can.",
+    "Let effort float—don’t chase speed into the wind."
+  ],
+  TIP_RAIN: [
+    "Pack a light shell and run lights.",
+    "Fenders help; watch paint and metal decks.",
+    "Bright rear light for spray.",
+    "Seal phone/wallet; roads get slick."
+  ],
+  TIP_HOT: [
+    "Top up electrolytes and back off on climbs.",
+    "Shade helps—pace for heat.",
+    "Shorten pulls; heat adds load.",
+    "Wet the jersey if needed."
+  ],
+  TIP_COLD: [
+    "Full-finger gloves and a windproof layer help.",
+    "Start slightly overdressed; vent on climbs.",
+    "Toe covers help more than you think.",
+    "Thin liner gloves go a long way."
+  ]
+};
+
+// Per-load salt: phrasing varies on each refresh (but stays stable within a single load)
+const PHRASE_SALT = (() => {
+  try { return (crypto.getRandomValues(new Uint32Array(1))[0]) >>> 0; }
+  catch { return (Math.floor(Math.random()*1e9)) >>> 0; }
+})();
+
+function fmt(str, dict){ return String(str).replace(/\{(\w+)\}/g, (_,k)=> (dict && k in dict) ? dict[k] : `{${k}}`); }
 
   /* --- Tiny templating + sentence polish --- */
   function fmt(str, dict){ return String(str).replace(/\{(\w+)\}/g, (_,k)=> (dict && k in dict) ? dict[k] : `{${k}}`); }
@@ -368,174 +391,159 @@
   }
 
   /* === Combined, wind-first outlook === */
-  function composeOutlook(data, headingDeg, routeType, rideMinutes){
-    const hourly = data.hourly;
-    let nextIdx = hourly.time.findIndex(t => new Date(t).getTime() > Date.now());
-    if (nextIdx===-1) nextIdx = 0;
-    const curIdx = Math.max(0, nextIdx-1);
+  function endPeriodFromHour(h){
+  if (h>=5&&h<=11) return 'late morning';
+  if (h>=12&&h<=16) return 'afternoon';
+  if (h>=17&&h<=21) return 'evening';
+  return 'overnight';
+}
 
-    const minutes = Number(rideMinutes)||60;
-    const horizonHours = minutes<=60 ? 1 : (minutes<=180 ? 3 : 6);
-    const endIdx = Math.min(nextIdx + horizonHours, hourly.time.length);
+function composeOutlook(data, headingDeg, routeType, rideMinutes){
+  const hourly = data.hourly;
+  let nextIdx = hourly.time.findIndex(t => new Date(t).getTime() > Date.now());
+  if (nextIdx===-1) nextIdx = 0;
+  const curIdx = Math.max(0, nextIdx-1);
 
-    const wspdK  = hourly.windspeed_10m.slice(curIdx, endIdx);
-    const gustK  = hourly.windgusts_10m.slice(curIdx, endIdx);
-    const dirs   = hourly.winddirection_10m.slice(curIdx, endIdx);
-    const codes  = hourly.weathercode.slice(curIdx, endIdx);
-    const pprob  = (hourly.precipitation_probability||[]).slice(curIdx, endIdx);
-    const tempsC = hourly.temperature_2m.slice(curIdx, endIdx);
+  const minutes = Number(rideMinutes)||60;
+  const horizonHours = minutes<=60 ? 1 : (minutes<=180 ? 3 : 6);
+  const endIdx = Math.min(nextIdx + horizonHours, hourly.time.length);
 
-    const nowSpd = mph(Number(wspdK[0])||0);
-    const endSpd = mph(Number(wspdK[wspdK.length-1])||0);
-    const gustMax = Math.max(...gustK.map(k=>mph(Number(k)||0)), nowSpd);
-    const nowDirDeg = Number(dirs[0]);
-    const endDirDeg = Number(dirs[dirs.length-1]);
-    const nowDir = bearingWord(nowDirDeg) || '—';
-    const endDir = bearingWord(endDirDeg) || nowDir;
+  // slices
+  const wspdK  = hourly.windspeed_10m.slice(curIdx, endIdx);
+  const gustK  = hourly.windgusts_10m.slice(curIdx, endIdx);
+  const dirs   = hourly.winddirection_10m.slice(curIdx, endIdx);
+  const codes  = hourly.weathercode.slice(curIdx, endIdx);
+  const pprob  = (hourly.precipitation_probability||[]).slice(curIdx, endIdx);
+  const tempsC = hourly.temperature_2m.slice(curIdx, endIdx);
+  const appC   = (hourly.apparent_temperature||[]).slice(curIdx, endIdx);
 
-    const hVal = parseInt(headingDeg,10);
-    const relNow = relationship(data.current_weather.winddirection, isNaN(hVal) ? null : hVal).kind;
+  // basic vals
+  const nowSpd = mph(Number(wspdK[0])||0);
+  const endSpd = mph(Number(wspdK[wspdK.length-1])||0);
+  const gustMax = Math.max(...gustK.map(k=>mph(Number(k)||0)), nowSpd);
+  const nowDirDeg = Number(dirs[0]);
+  const endDirDeg = Number(dirs[dirs.length-1]);
+  const nowDir = bearingWord(nowDirDeg) || '—';
+  const endDir = bearingWord(endDirDeg) || nowDir;
 
-    // Trend word
-    let trendKey = 'steady';
-    if (endSpd - nowSpd >= 3) trendKey = 'rising';
-    else if (nowSpd - endSpd >= 3) trendKey = 'easing';
-    const trendWord = oneOf(PHRASES.TRENDS[trendKey], nowSpd, endSpd);
+  const hVal = parseInt(headingDeg,10);
+  const relNow = relationship(data.current_weather.winddirection, isNaN(hVal) ? null : hVal).kind;
 
-    // Period label
-    const endH = new Date(hourly.time[Math.min(endIdx, hourly.time.length-1)]).getHours();
-    const endPeriod = (endH>=5&&endH<=11) ? 'late morning'
-                     : (endH>=12&&endH<=16) ? 'afternoon'
-                     : (endH>=17&&endH<=21) ? 'evening'
-                     : 'overnight';
+  // trend
+  let trendKey = 'steady';
+  if (endSpd - nowSpd >= 3) trendKey = 'rising';
+  else if (nowSpd - endSpd >= 3) trendKey = 'easing';
+  const endH = new Date(hourly.time[Math.min(endIdx, hourly.time.length-1)]).getHours();
+  const endPeriod = endPeriodFromHour(endH);
+  const trendWord = oneOf(PHRASES.TRENDS[trendKey], nowSpd, endSpd, endH);
 
-    // Precip timing (brief)
-    const precipIdx = codes.findIndex((c,i)=>{
-      const cat = categoryFor(c);
-      return ['rain','drizzle','snow','storm'].includes(cat) || ((pprob[i]||0) >= 50);
-    });
-    let precipLine = '';
-    if (precipIdx !== -1){
-      const soon = precipIdx<=1 ? oneOf(PHRASES.SOON, precipIdx) : `by ${endPeriod}`;
-      precipLine = fmt(oneOf(PHRASES.PRECIP_PHRASES, endH, precipIdx), { when: soon });
-    }
+  // hazards across window
+  const cats = codes.map(categoryFor);
+  const anyStorm = cats.includes('storm');
+  const anySnow  = cats.includes('snow');
+  const anyRain  = cats.includes('rain') || cats.includes('drizzle');
+  const anyFog   = cats.includes('fog');
 
-    // Temperature drift (very short)
-    const f0 = fFromC(Number(tempsC[0])||0);
-    const fL = fFromC(Number(tempsC[tempsC.length-1])||0);
-    const dF = fL - f0;
-    let tempLine = '';
-    if (Math.abs(dF) >= 4){
-      tempLine = dF>0 ? oneOf(PHRASES.TEMP_TRENDS.up, dF) : oneOf(PHRASES.TEMP_TRENDS.down, dF);
-    } else {
-      tempLine = oneOf(PHRASES.TEMP_TRENDS.steady, dF, 1);
-    }
+  // precip timing
+  const precipIdx = codes.findIndex((c,i)=>{
+    const k = categoryFor(c);
+    return ['rain','drizzle','snow','storm'].includes(k) || ((pprob[i]||0) >= 50);
+  });
+  const soonWord = (precipIdx !== -1 && precipIdx <= 1) ? oneOf(PHRASES.SOON, precipIdx) : `by ${endPeriod}`;
 
-    // Wind detail + shift + gusts
-    const detail = fmt(oneOf(PHRASES.WIND_DETAIL, nowSpd, endSpd, endH), {
-      nowSpd, endSpd, endPeriod, trendWord,
-      nowDir, nowRel: relNow,
-    });
+  // feels-like extremes
+  const feelF = fFromC(Number(appC[0] ?? tempsC[0] ?? 0));
+  const extremeHot  = feelF >= 92;
+  const extremeCold = feelF <= 25;
 
-    let shiftLine = '';
-    const change = degDiff(endDirDeg, nowDirDeg);
-    if (Number.isFinite(change) && change >= 30){
-      shiftLine = fmt(oneOf(PHRASES.SHIFT_PHRASES, change, nowDirDeg), {
-        shiftVerb: oneOf(PHRASES.SHIFT_VERBS, change),
-        dirA: nowDir, dirB: endDir
-      });
-    }
-
-    let gustLine = '';
-    if (gustMax >= 18){
-      gustLine = fmt(oneOf(PHRASES.GUST_PHRASES, gustMax), {
-        gustVerb: oneOf(PHRASES.GUST_VERBS, gustMax, 2),
-        gustMax
-      });
-    }
-
-    // Strategy / route-aware
-    let strat = '';
-    if (routeType === 'outback'){
-      const retRel = relationship(data.current_weather.winddirection, isNaN(hVal)?null:(hVal+180)%360).kind;
-      if (relNow==='tail' && (nowSpd>=12 || gustMax>=18)) strat = oneOf(PHRASES.OUTBACK_TAIL, hVal, 1);
-      else if (relNow==='head' && retRel==='tail') strat = oneOf(PHRASES.OUTBACK_HEAD, hVal, 2);
-      else if (relNow==='cross') strat = oneOf(PHRASES.OUTBACK_CROSS, hVal, 3);
-      else strat = oneOf(PHRASES.OUTBACK_NEUTRAL, hVal, 4);
-    } else if (routeType === 'oneway'){
-      const reverseDirWord = bearingWord(((isNaN(hVal)?0:hVal)+180)%360) || 'reverse';
-      if (relNow==='tail') strat = fmt(oneOf(PHRASES.ONEWAY_TAIL, hVal, 5), { reverseDirWord });
-      else if (relNow==='head') strat = oneOf(PHRASES.ONEWAY_HEAD, hVal, 6);
-      else strat = oneOf(PHRASES.ONEWAY_CROSS, hVal, 7);
-    } else { // loop
-      strat = oneOf(PHRASES.LOOP_TACTICS, nowSpd, endSpd, 9);
-    }
-
-    // Micro tip (contextual)
-    let tip = '';
-    let tipKind = '';
-    if (precipIdx !== -1) {
-      tip = oneOf(PHRASES.TIP_RAIN, precipIdx, 11);
-      tipKind = 'precip';
-    } else if (nowSpd>=14 || gustMax>=22) {
-      tip = oneOf(PHRASES.TIP_WINDY, nowSpd, 12);
-      tipKind = 'wind';
-    } else {
-      const feelC = (Number(hourly.apparent_temperature?.[curIdx]) || Number(tempsC[0]) || 0);
-      const feelF = fFromC(feelC);
-      if (feelF<=45) {
-        tip = oneOf(PHRASES.TIP_COLD, feelF, 13);
-        tipKind = 'cold';
-      } else if (feelF>=84) {
-        tip = oneOf(PHRASES.TIP_HOT, feelF, 14);
-        tipKind = 'hot';
-      }
-    }
-
-    // If headwind eases soon, surface that early
-    let opener = '';
-    const soon1 = mph(Number(wspdK[1]||wspdK[0])||0);
-    const soon2 = mph(Number(wspdK[2]||wspdK[1]||wspdK[0])||0);
-    const avgSoon = Math.round((soon1 + soon2)/2);
-    const headEasesSoon = (relNow==='head') && Number.isFinite(avgSoon) && (nowSpd - avgSoon) >= 3;
-    if (headEasesSoon) opener = oneOf(PHRASES.HEAD_EASING, nowSpd, avgSoon);
-    else if (relNow==='tail' && routeType==='outback') opener = oneOf(PHRASES.TAIL_PAYBACK, nowSpd, 15);
-    else opener = oneOf(PHRASES.NEUTRAL_OPENER, nowSpd, 16);
-
-    // Build and polish 2–3 sentences, wind-first
-    const windParts = [
-      opener,
-      detail,
-      shiftLine || gustLine,
-      strat,
-      tipKind === 'wind' ? tip : ''
-    ].filter(Boolean);
-
-    const weatherParts = [
-      precipLine || '',
-      tempLine || '',
-      (tip && tipKind && tipKind !== 'wind') ? tip : ''
-    ].filter(Boolean);
-
-    const sentences = [];
-    if (windParts.length) sentences.push(windParts.shift());
-    if (weatherParts.length) {
-      sentences.push(weatherParts.shift());
-    } else if (windParts.length) {
-      sentences.push(windParts.shift());
-    }
-
-    const remainder = [...windParts, ...weatherParts];
-    const seed = seedFrom(nowSpd, endSpd, endH, routeType);
-    if ((seed % 2) === 0) remainder.reverse();
-    while (sentences.length < 3 && remainder.length){
-      sentences.push(remainder.shift());
-    }
-
-    if (!sentences.length && tip) sentences.push(tip);
-
-    return finalizeSentences(sentences);
+  // hazard line (ALWAYS included first if present)
+  let hazard = '';
+  if (anyStorm) {
+    hazard = oneOf(PHRASES.HAZARD_STORM, precipIdx, 1);
+  } else if (anyRain) {
+    hazard = (precipIdx !== -1 && precipIdx <= 1)
+      ? oneOf(PHRASES.HAZARD_RAIN_NOW, precipIdx, 2)
+      : fmt(oneOf(PHRASES.HAZARD_RAIN_SOON, precipIdx, 3), { when: soonWord });
+  } else if (anySnow) {
+    hazard = oneOf(PHRASES.HAZARD_SNOW, 4);
+  } else if (anyFog) {
+    hazard = oneOf(PHRASES.HAZARD_FOG, 5);
+  } else if (extremeHot) {
+    hazard = oneOf(PHRASES.HAZARD_HEAT, feelF, 6);
+  } else if (extremeCold) {
+    hazard = oneOf(PHRASES.HAZARD_COLD, feelF, 7);
   }
+
+  // wind detail + shift + gusts
+  const detail = fmt(oneOf(PHRASES.WIND_DETAIL, nowSpd, endSpd, endH), {
+    nowSpd, endSpd, endPeriod, trendWord,
+    nowDir, nowRel: relNow
+  });
+
+  let shiftLine = '';
+  const change = degDiff(endDirDeg, nowDirDeg);
+  if (Number.isFinite(change) && change >= 30){
+    const shiftVerb = oneOf(PHRASES.SHIFT_VERBS, change, 8);
+    shiftLine = fmt(oneOf(PHRASES.SHIFT_PHRASES, change, 9), { shiftVerb, dirA: nowDir, dirB: endDir });
+  }
+
+  let gustLine = '';
+  if (gustMax >= 18){
+    gustLine = fmt(oneOf(PHRASES.GUST_PHRASES, gustMax, 10), {
+      gustVerb: oneOf(PHRASES.GUST_VERBS, gustMax, 11),
+      gustMax
+    });
+  }
+
+  // strategy
+  let strat = '';
+  if (routeType === 'outback'){
+    const retRel = relationship(data.current_weather.winddirection, isNaN(hVal)?null:(hVal+180)%360).kind;
+    if (relNow==='tail' && (nowSpd>=12 || gustMax>=18)) strat = oneOf(PHRASES.OUTBACK_TAIL, hVal, 12);
+    else if (relNow==='head' && retRel==='tail')        strat = oneOf(PHRASES.OUTBACK_HEAD, hVal, 13);
+    else if (relNow==='cross')                           strat = oneOf(PHRASES.OUTBACK_CROSS, hVal, 14);
+    else                                                 strat = oneOf(PHRASES.OUTBACK_NEUTRAL, hVal, 15);
+  } else if (routeType === 'oneway'){
+    const reverseDirWord = bearingWord(((isNaN(hVal)?0:hVal)+180)%360) || 'reverse';
+    if (relNow==='tail')      strat = fmt(oneOf(PHRASES.ONEWAY_TAIL, hVal, 16), { reverseDirWord });
+    else if (relNow==='head') strat = oneOf(PHRASES.ONEWAY_HEAD, hVal, 17);
+    else if (relNow==='cross')strat = oneOf(PHRASES.ONEWAY_CROSS, hVal, 18);
+    else                      strat = oneOf(PHRASES.ONEWAY_NEUTRAL, hVal, 19);
+  } else {
+    strat = oneOf(PHRASES.LOOP_TACTICS, nowSpd, endSpd, 20);
+  }
+
+  // temp trend (short)
+  const f0 = fFromC(Number(tempsC[0])||0);
+  const fL = fFromC(Number(tempsC[tempsC.length-1])||0);
+  const dF = fL - f0;
+  let tempLine = '';
+  if (Math.abs(dF) >= 4){
+    tempLine = dF>0 ? oneOf(PHRASES.TEMP_TRENDS.up, dF) : oneOf(PHRASES.TEMP_TRENDS.down, dF);
+  } else {
+    tempLine = oneOf(PHRASES.TEMP_TRENDS.steady, dF, 21);
+  }
+
+  // micro tip (context)
+  let tip = '';
+  if (anyRain || anySnow)      tip = oneOf(PHRASES.TIP_RAIN, 22);
+  else if (nowSpd>=14 || gustMax>=22) tip = oneOf(PHRASES.TIP_WINDY, 23);
+  else if (feelF>=84)          tip = oneOf(PHRASES.TIP_HOT, 24);
+  else if (feelF<=45)          tip = oneOf(PHRASES.TIP_COLD, 25);
+
+  // assemble: hazard (if any) -> wind detail -> (shift/gust/strat) -> optional temp/tip
+  const parts = [
+    hazard,
+    detail,
+    (shiftLine || gustLine || strat),
+    tempLine,
+    tip
+  ].filter(Boolean);
+
+  // produce 3–4 sentences
+  const out = parts.slice(0,4);
+  return out.map(s => String(s).trim().replace(/[.?!]\s*$/,'') + '.').join(' ');
+}
 
   /* --- Location UI --- */
   async function startGeocode(){
